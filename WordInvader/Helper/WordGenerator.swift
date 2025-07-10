@@ -11,7 +11,7 @@ struct WordGenerator {
 
     init() {
         if let path = Bundle.main.path(forResource: "words_alpha", ofType: "txt"),
-           let content = try? String(contentsOfFile: path) {
+           let content = try? String(contentsOfFile: path, encoding: .utf8) {
             wordList = content.components(separatedBy: .newlines)
         } else {
             wordList = []
