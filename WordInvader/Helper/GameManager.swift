@@ -9,6 +9,9 @@ import Foundation
 
 class GameManager: ObservableObject {
     @Published var currentTaskText: String = ""
+    @Published var score: Int = 0
+    @Published var isGameOver: Bool = false
+    @Published var health: Int = 100
 
     // Singleton / inject ke scene
     static let shared = GameManager()

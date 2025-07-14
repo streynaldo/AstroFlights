@@ -6,6 +6,7 @@
 //
 
 import SpriteKit
+import AVFoundation
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
     
@@ -19,86 +20,160 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var isResetting = false
     
+    let shootSound = SKAction.playSoundFileNamed("shoot.mp3", waitForCompletion: false)
+    let explosionSound = SKAction.playSoundFileNamed("explosion.mp3", waitForCompletion: false)
+    let wrongSound = SKAction.playSoundFileNamed("wrong.mp3", waitForCompletion: false)
+    
+    let spaceshipIdle = SKTexture(imageNamed: "spaceship_idle")
+    let spaceshipLeft = SKTexture(imageNamed: "spaceship_left")
+    let spaceshipRight = SKTexture(imageNamed: "spaceship_right")
+    
+    var obstacleSpeed : CGFloat = 8
+    
+    var backgroundMusic: SKAudioNode?
     
     override func didMove(to view: SKView) {
-        backgroundColor = .black
+        // Inisialisasi BGM
+        if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
+            backgroundMusic = SKAudioNode(url: musicURL)
+            backgroundMusic?.autoplayLooped = true
+            addChild(backgroundMusic!)
+        }
+        
+        let background = SKSpriteNode(imageNamed: "background")
+            background.position = CGPoint(x: size.width/2, y: size.height/2)
+            background.zPosition = -1  // Pastikan di belakang semua node
+            background.size = size     // Atur agar full screen
+
+            addChild(background)
         
         // Spaceship setup...
-        spaceship = SKSpriteNode(color: .blue, size: CGSize(width: 60, height: 30))
+        spaceship = SKSpriteNode(imageNamed: "spaceship_idle")
+        spaceship.size = CGSize(width: 60, height: 70)
         spaceship.position = CGPoint(x: size.width / 2, y: 100)
         addChild(spaceship)
-        
-        // Gesture tap...
-//        let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap))
-//        view.addGestureRecognizer(tapRecognizer)
         
         // 🚨 Ini WAJIB 🚨
         physicsWorld.contactDelegate = self
         
-        // Tambah physics body ke spaceship
+        // physics body ke spaceship
         spaceship.physicsBody = SKPhysicsBody(rectangleOf: spaceship.size)
         spaceship.physicsBody?.isDynamic = false // Supaya spaceship gak kena gravity
         spaceship.physicsBody?.categoryBitMask = 0x1 << 2 // 🚀 spaceship = kategori 2
         spaceship.physicsBody?.contactTestBitMask = 0x1 << 1 // bisa kontak dengan obstacle
         spaceship.physicsBody?.collisionBitMask = 0
         
+        let floorNode = SKNode()
+        floorNode.position = CGPoint(x: size.width / 2, y: 0) // dasar screen
+        floorNode.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: size.width, height: 10))
+        floorNode.physicsBody?.isDynamic = false
+        floorNode.physicsBody?.categoryBitMask = 0x1 << 3 // FLOOR = kategori 3
+        floorNode.physicsBody?.contactTestBitMask = 0x1 << 1 // obstacle = kategori 1
+        floorNode.physicsBody?.collisionBitMask = 0
+        addChild(floorNode)
         
         spawnObstacleRow()
     }
     
     func didBegin(_ contact: SKPhysicsContact) {
+        // Jangan proses kalau sedang reset
+        if isResetting { return }
+        
         var letterNode: SKNode?
         var bulletNode: SKNode?
         var spaceshipHit = false
-
+        var floorHit = false
+        
+        if contact.bodyA.categoryBitMask == 0x1 << 3 || contact.bodyB.categoryBitMask == 0x1 << 3 {
+            floorHit = true
+        }
+        
+        if floorHit {
+            if contact.bodyA.node?.name?.hasPrefix("letter_") == true {
+                letterNode = contact.bodyA.node
+            } else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
+                letterNode = contact.bodyB.node
+            }
+            
+            if let hit = letterNode {
+                hit.removeFromParent()
+            }
+            
+            //            Kalo node kelewat minus hp
+            if let task = currentTask, !task.isComplete {
+                gameManager.health -= 10
+                if gameManager.health <= 0 {
+                    resetGame(isGameOver: true)
+                    return
+                }
+            }
+            
+            currentTask = nil
+            trySpawnIfClear() // langsung spawn kata baru
+            return
+        }
+        
+        
+        // Spaceship collision
+        if contact.bodyA.node == spaceship || contact.bodyB.node == spaceship {
+            spaceshipHit = true
+        }
         if contact.bodyA.node?.name?.hasPrefix("letter_") == true {
             letterNode = contact.bodyA.node
         } else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
             letterNode = contact.bodyB.node
         }
-
+        
+        if spaceshipHit && letterNode != nil {
+            run(explosionSound)
+            createExplosion(at: spaceship.position)
+            letterNode?.removeFromParent() // hapus obstacle yang kena
+            //            NABRAK MINUS HP
+            gameManager.health -= 10
+            if gameManager.health <= 0 {
+                resetGame(isGameOver: true)
+            }
+        }
+        
+        
+        // Bullet vs letter
         if contact.bodyA.node?.name == "bullet" {
             bulletNode = contact.bodyA.node
         } else if contact.bodyB.node?.name == "bullet" {
             bulletNode = contact.bodyB.node
         }
-
-        if contact.bodyA.node == spaceship || contact.bodyB.node == spaceship {
-            spaceshipHit = true
+        // Pastikan letterNode ketemu (cari lagi kalau belum)
+        if letterNode == nil {
+            if contact.bodyA.node?.name?.hasPrefix("letter_") == true {
+                letterNode = contact.bodyA.node
+            } else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
+                letterNode = contact.bodyB.node
+            }
         }
-
-        if spaceshipHit && letterNode != nil {
-            print("💥 Spaceship kena obstacle! Game reset.")
-            resetGame()
-            return
-        }
-
-        // ✅ Pastikan task masih ada
-        guard let task = currentTask else { return }
-
+        
         guard let hit = letterNode,
               let bullet = bulletNode,
               let name = hit.name,
               hit.parent != nil else {
             return
         }
-
+        
         bullet.removeFromParent()
-
+        
         let letter = name.replacingOccurrences(of: "letter_", with: "").first!
-
-        if task.remainingLetters.contains(letter) {
+        
+        if let task = currentTask, task.remainingLetters.contains(letter) {
+            // BENAR
             task.fill(letter: letter)
-            print("Benar! \(task.display)")
-
+            createExplosion(at: hit.position)
+            run(explosionSound)
             hit.removeFromParent()
             gameManager.currentTaskText = task.display
-
+            
             if task.isComplete {
-                print("🎉 Kata lengkap: \(task.word)")
+                gameManager.score += 50
                 currentTask = nil
-                gameManager.currentTaskText = ""
-
+                gameManager.currentTaskText = "Good Job"
                 run(SKAction.sequence([
                     SKAction.wait(forDuration: 0.5),
                     SKAction.run { [weak self] in
@@ -107,40 +182,47 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 ]))
             }
         } else {
-            print("Salah huruf — obstacle tetap turun")
+            // SELALU kurangi HP kalau huruf SALAH atau decoy
+            run(wrongSound)
+            gameManager.health -= 5
+            if gameManager.health <= 0 {
+                resetGame(isGameOver: true)
+            }
         }
+        
+        // Decoy tetap jalan kalau salah huruf
     }
-
+    
     
     func trySpawnIfClear() {
+        if isResetting { return } // Stop kalau reset sedang jalan
+        
         let stillHasObstacles = children.contains { node in
             node.name?.hasPrefix("letter_") == true
         }
         
-        if !stillHasObstacles {
-            print("✅ Semua obstacle habis, spawn row baru")
-            spawnObstacleRow()
-        } else {
-            print("⏳ Masih ada obstacle, tunggu lagi...")
+        if stillHasObstacles {
             run(SKAction.sequence([
                 SKAction.wait(forDuration: 0.5),
                 SKAction.run { [weak self] in
                     self?.trySpawnIfClear()
                 }
             ]))
+        } else {
+            spawnObstacleRow()
         }
     }
     
     
-    
-    
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !gameManager.isGameOver else { return }
         if let touch = touches.first {
             previousTouchPosition = touch.location(in: self)
         }
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !gameManager.isGameOver else { return }
         guard let touch = touches.first,
               let previousPosition = previousTouchPosition else { return }
         
@@ -148,6 +230,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let deltaX = currentPosition.x - previousPosition.x
         
         spaceship.position.x += deltaX
+        
+        if deltaX > 0 {
+            // Gerak ke kanan
+            spaceship.texture = spaceshipRight
+        } else if deltaX < 0 {
+            // Gerak ke kiri
+            spaceship.texture = spaceshipLeft
+        } else {
+            // Tidak bergerak, idle
+            spaceship.texture = spaceshipIdle
+        }
         
         // Clamp kiri-kanan
         spaceship.position.x = max(spaceship.size.width / 2, spaceship.position.x)
@@ -157,32 +250,34 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !gameManager.isGameOver else { return }
         previousTouchPosition = nil
+        spaceship.texture = spaceshipIdle
         fireBullet()
+        run(shootSound)
     }
     
     
     func spawnObstacleRow() {
-        // Kalau task belum ada atau sudah selesai → generate kata baru
+        // 🚫 Kalau task belum ada atau sudah selesai → generate kata baru
         if currentTask == nil || currentTask.isComplete {
-            guard let word = wordGenerator.randomWord(ofLength: 5)?.uppercased() else {
+            guard let word = wordGenerator.randomWord()?.uppercased() else {
                 print("No word found")
                 return
             }
             
-            let blanksCount = Int.random(in: 1...2)
+            let blanksCount = min(Int.random(in: 1...2), word.count)
             let blankIndexes = Array(0..<word.count).shuffled().prefix(blanksCount)
-            
             currentTask = WordTask(word: word, blanks: Array(blankIndexes))
+            
             print("New Word: \(currentTask.word), blanks at: \(currentTask.blankIndexes)")
-            print("Overlay: \(currentTask.display)")
         }
         
-        // Huruf target
-        var obstacles = currentTask.remainingLetters
+        // 🚫 Batasi obstacles target max 4 huruf (biar decoy max 5 total)
+        var obstacles = Array(currentTask.remainingLetters.prefix(4))
         let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         
-        // Tambahkan decoy agar total 5
+        // Tambahkan decoy agar total pasti 5
         while obstacles.count < 5 {
             let random = letters.randomElement()!
             if !obstacles.contains(random) {
@@ -196,15 +291,25 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let spacing = size.width / CGFloat(totalObstacles + 1)
         let yStart = size.height + 40
         
+        // Hitung pengurang dari score
+        let speedUpFactor = floor(Double(gameManager.score / 100) * 0.5)
+        
+        // Hitung durasi final, clamp ke minimum misalnya 3 detik
+        obstacleSpeed = max(4.0, obstacleSpeed - speedUpFactor)
+        
         for (i, letter) in obstacles.enumerated() {
-            let letterNode = SKLabelNode(text: String(letter))
-            letterNode.fontSize = 40
-            letterNode.fontColor = .white
+            let randNumber = Int.random(in: 1...3)
             
-            let boxSize = CGSize(width: 50, height: 50)
-            let boxNode = SKShapeNode(rectOf: boxSize, cornerRadius: 8)
-            boxNode.fillColor = .red
-            boxNode.strokeColor = .clear
+            // 🔡 Buat huruf retro
+            let letterNode = SKLabelNode(text: String(letter))
+            letterNode.fontSize = 32
+            letterNode.fontColor = .green // atau .white
+            letterNode.fontName = "Courier-Bold"
+            letterNode.horizontalAlignmentMode = .center
+            letterNode.verticalAlignmentMode = .center
+            
+            let boxNode = SKSpriteNode(imageNamed: "rock\(randNumber)")
+            boxNode.size = CGSize(width: 50, height: 50)
             
             let obstacle = SKNode()
             obstacle.name = "letter_\(letter)"
@@ -219,31 +324,32 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             
             addChild(obstacle)
             
-            let moveDown = SKAction.moveBy(x: 0, y: -size.height - 80, duration: 15)
+            // ⚡️ Durasi gerak dipercepat agar Node nggak numpuk
+            let moveDown = SKAction.moveBy(x: 0, y: -size.height - 80, duration: obstacleSpeed)
+            
             let check = SKAction.run { [weak self] in
                 guard let self = self else { return }
-                if self.currentTask != nil && !self.isResetting {
-                    print("⚠️ Kata belum selesai, game direset!")
+                if let task = self.currentTask, !task.isComplete, !self.isResetting {
+                    print("⚠️ Belum selesai, RESET")
                     self.isResetting = true
                     self.resetGame()
                 }
             }
+            
             let remove = SKAction.removeFromParent()
             obstacle.run(SKAction.sequence([moveDown, check, remove]))
             setupObstaclePhysics(obstacle)
         }
-        // Setelah bikin kata:
-        gameManager.currentTaskText = currentTask.display // misalnya "A _ C _ E"
+        
+        // 📝 Update overlay kata
+        gameManager.currentTaskText = currentTask.display
         print("Overlay: \(currentTask.display)")
     }
     
-//    @objc func handleTap() {
-//        fireBullet()
-//    }
     
     func fireBullet() {
-        let bullet = SKShapeNode(circleOfRadius: 5)
-        bullet.fillColor = .yellow
+        let bullet = SKSpriteNode(imageNamed: "bullet")
+        bullet.size = CGSize(width: 10, height: 10)
         bullet.position = CGPoint(x: spaceship.position.x, y: spaceship.position.y + spaceship.size.height / 2 + 10)
         bullet.name = "bullet"
         
@@ -260,30 +366,105 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func setupObstaclePhysics(_ obstacle: SKNode) {
         obstacle.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 50, height: 50))
         obstacle.physicsBody?.categoryBitMask = 0x1 << 1 // obstacle = kategori 1
-        obstacle.physicsBody?.contactTestBitMask = (0x1 << 0) | (0x1 << 2) // kontak bullet & spaceship
+        obstacle.physicsBody?.contactTestBitMask = (0x1 << 0) | (0x1 << 2) | (0x1 << 3) // bullet, spaceship, floor
         obstacle.physicsBody?.collisionBitMask = 0
         obstacle.physicsBody?.affectedByGravity = false
     }
     
-    func resetGame() {
-        guard !isResetting else { return } // Hindari double
-        isResetting = true
-        
+    func createExplosion(at position: CGPoint) {
+        if let explosion = SKEmitterNode(fileNamed: "Explosion.sks") {
+            explosion.position = position
+            addChild(explosion)
+            
+            // Hapus node setelah efek selesai
+            run(SKAction.sequence([
+                SKAction.wait(forDuration: 0.5),
+                SKAction.run { explosion.removeFromParent() }
+            ]))
+        }
+    }
+    func startNewGame() {
+        // Bersihkan obstacles
         for child in children {
             if child.name?.hasPrefix("letter_") == true {
+                child.removeAllActions()
+                child.removeFromParent()
+            }
+        }
+        playBGM()
+        obstacleSpeed = 8
+        gameManager.score = 0
+        gameManager.health = 100
+        gameManager.isGameOver = false
+        isResetting = false
+        
+        currentTask = nil
+        spawnObstacleRow()
+    }
+    
+    func resetGame(isGameOver: Bool = false) {
+        guard !isResetting else { return }
+        isResetting = true
+        
+        if isGameOver {
+            gameManager.isGameOver = true
+            gameManager.currentTaskText = "Game Over!"
+        } else {
+            gameManager.isGameOver = false
+            gameManager.currentTaskText = ""
+        }
+        
+        // Bersihkan obstacles
+        for child in children {
+            if child.name?.hasPrefix("letter_") == true {
+                child.removeAllActions()
                 child.removeFromParent()
             }
         }
         
-        currentTask = nil
-        gameManager.currentTaskText = ""
-        
-        run(SKAction.sequence([
-            SKAction.wait(forDuration: 1),
-            SKAction.run { [weak self] in
-                self?.isResetting = false
-                self?.spawnObstacleRow()
-            }
-        ]))
+        if isGameOver {
+            // Kalau game over → tunggu sebentar, baru restart total
+            run(SKAction.sequence([
+                SKAction.wait(forDuration: 2.0),
+                SKAction.run { [weak self] in
+                    guard let self = self else { return }
+                    stopBGM()
+                    self.gameManager.health = 100
+                    //                    self.gameManager.isGameOver = false
+                    self.isResetting = false
+                    //                    self.spawnObstacleRow()
+                }
+            ]))
+        } else {
+            // Kalau reset biasa → spawn lagi cepat
+            gameManager.score = 0
+            gameManager.health = 100
+            run(SKAction.sequence([
+                SKAction.wait(forDuration: 0.5),
+                SKAction.run { [weak self] in
+                    self?.isResetting = false
+                    self?.spawnObstacleRow()
+                }
+            ]))
+        }
+    }
+    
+    func stopBGM() {
+        backgroundMusic?.run(SKAction.stop())
+    }
+    
+    func playBGM() {
+        backgroundMusic?.run(SKAction.play())
+    }
+    
+    func randomMotivation() -> String {
+        let messages = [
+            "Keep practicing and beat your high score!",
+            "You got this, Captain!",
+            "Never give up, pilot! Try again!",
+            "Your spaceship needs you!",
+            "One more try! Show them who's boss!"
+        ]
+        return messages.randomElement() ?? ""
     }
 }
