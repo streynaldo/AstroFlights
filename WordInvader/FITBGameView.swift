@@ -7,10 +7,10 @@
 import SwiftUI
 import SpriteKit
 
-struct ContentView: View {
+struct FITBGameView: View {
     @StateObject private var gameManager = GameManager.shared
     
-    @State private var scene = GameScene(size: CGSize(width: 400, height: 800))
+    @State private var scene = FITBGameScene(size: CGSize(width: 400, height: 800))
     
 //    var scene: SKScene {
 //        let scene = GameScene()

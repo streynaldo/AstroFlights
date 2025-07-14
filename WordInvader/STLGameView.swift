@@ -8,19 +8,19 @@
 import SwiftUI
 import SpriteKit
 
-struct GameView: View {
-    @ObservedObject var gameState: GameState
+struct STLGameView: View {
+    @ObservedObject var gameState: STLGameState
     @ObservedObject var gameKitManager: GameKitManager // Properti ini perlu diinisialisasi
     
-    @State private var scene: GameScene
+    @State private var scene: STLGameScene
     @State private var showSuccessAnimation = false
     
     // DIUBAH: Tambahkan gameKitManager ke parameter init
-    init(gameState: GameState, gameKitManager: GameKitManager) {
+    init(gameState: STLGameState, gameKitManager: GameKitManager) {
         self.gameState = gameState
         self.gameKitManager = gameKitManager // Inisialisasi properti ini
         
-        let initialScene = GameScene(size: UIScreen.main.bounds.size)
+        let initialScene = STLGameScene(size: UIScreen.main.bounds.size)
         initialScene.scaleMode = .aspectFill
         initialScene.gameState = gameState
         
@@ -102,10 +102,10 @@ struct GameView: View {
 }
 
 #Preview {
-    let sampleGameState = GameState(words: ["PREVIEW", "EXAMPLE"])
+    let sampleGameState = STLGameState(words: ["PREVIEW", "EXAMPLE"])
     // DIUBAH: Tambahkan instance GameKitManager untuk preview
     let sampleGameKitManager = GameKitManager()
     
     // Masukkan kedua parameter ke GameView
-    GameView(gameState: sampleGameState, gameKitManager: sampleGameKitManager)
+    STLGameView(gameState: sampleGameState, gameKitManager: sampleGameKitManager)
 }

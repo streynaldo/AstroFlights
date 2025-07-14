@@ -11,7 +11,7 @@ import SwiftUI
 struct WordInvaderApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            STLGameLayout()
         }
     }
 }
