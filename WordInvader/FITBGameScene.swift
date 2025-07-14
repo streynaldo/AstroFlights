@@ -8,7 +8,7 @@
 import SpriteKit
 import AVFoundation
 
-class GameScene: SKScene, SKPhysicsContactDelegate {
+class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     
     var spaceship: SKSpriteNode!
     var previousTouchPosition: CGPoint?

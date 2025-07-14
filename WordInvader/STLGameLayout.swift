@@ -8,16 +8,18 @@
 import SwiftUI
 import SwiftData
 
-struct ContentView: View {
+struct STLGameLayout: View {
     // Ambil SwiftData context dari environment
-    @Environment(\.modelContext) private var modelContext
+//    @Environment(\.modelContext) private var modelContext
     // Query untuk mengambil semua kata dari database
-    @Query private var words: [WordItem]
+//    @Query private var words: [WordItem]
+    
+    private var words : [String] = WordGenerator().wordList
     
     // State untuk mengontrol apakah game sedang berjalan
     @State private var isGameActive = false
     // State untuk menyimpan game state object
-    @State private var gameState: GameState?
+    @State private var gameState: STLGameState?
     
     // DIITAMBAHKAN: StateObject untuk GameKitManager
     @StateObject private var gameKitManager = GameKitManager()
@@ -27,7 +29,7 @@ struct ContentView: View {
             if isGameActive, let gameState = gameState {
                 // Jika game aktif, tampilkan GameView
                 // DIUBAH: Tambahkan parameter gameKitManager di sini
-                GameView(gameState: gameState, gameKitManager: gameKitManager)
+                STLGameView(gameState: gameState, gameKitManager: gameKitManager)
                     .onChange(of: gameState.isGameOver) { _, isOver in
                         if isOver {
                             isGameActive = false
@@ -73,19 +75,19 @@ struct ContentView: View {
     
     private func startGame() {
         // Ambil teks dari WordItem
-        let wordStrings = words.map { $0.text }
+        let wordStrings = words.map { $0 }
         guard !wordStrings.isEmpty else {
             print("No words found in the database!")
             return
         }
         
         // Buat instance GameState baru dan mulai game
-        self.gameState = GameState(words: wordStrings)
+        self.gameState = STLGameState(words: wordStrings)
         self.isGameActive = true
     }
 }
 
 #Preview {
-    ContentView()
+    STLGameLayout()
         .modelContainer(for: WordItem.self, inMemory: true)
 }

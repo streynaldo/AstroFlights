@@ -16,11 +16,20 @@ enum PhysicsCategory: UInt32 {
     case obstacle = 0b100    // 4
 }
 
-class GameScene: SKScene, SKPhysicsContactDelegate {
+class STLGameScene: SKScene, SKPhysicsContactDelegate {
     
-    var gameState: GameState?
+    var gameState: STLGameState?
     private var player: SKSpriteNode!
     private var lastTouchLocation: CGPoint?
+    var previousTouchPosition: CGPoint?
+    
+    let shootSound = SKAction.playSoundFileNamed("shoot.mp3", waitForCompletion: false)
+    let explosionSound = SKAction.playSoundFileNamed("explosion.mp3", waitForCompletion: false)
+    let wrongSound = SKAction.playSoundFileNamed("wrong.mp3", waitForCompletion: false)
+    
+    let spaceshipIdle = SKTexture(imageNamed: "spaceship_idle")
+    let spaceshipLeft = SKTexture(imageNamed: "spaceship_left")
+    let spaceshipRight = SKTexture(imageNamed: "spaceship_right")
     
     // DIITAMBAHKAN: Properti untuk background music
     private var backgroundMusic: SKAudioNode!
@@ -38,7 +47,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // DIITAMBAHKAN: Fungsi untuk setup audio
     private func setupAudio() {
         // Pastikan nama file musiknya benar
-        if let musicURL = Bundle.main.url(forResource: "background_music", withExtension: "mp3") {
+        if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
             backgroundMusic = SKAudioNode(url: musicURL)
             backgroundMusic.autoplayLooped = true // Putar berulang-ulang
             addChild(backgroundMusic)
@@ -49,7 +58,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     private func setupPlayer() {
         // DIUBAH: Menggunakan gambar dari aset untuk pesawat
-        player = SKSpriteNode(imageNamed: "player_ship") // Pastikan nama aset ini benar
+        player = SKSpriteNode(imageNamed: "spaceship_idle") // Pastikan nama aset ini benar
         player.size = CGSize(width: 70, height: 70) // Sesuaikan ukurannya jika perlu
         player.position = CGPoint(x: size.width / 2, y: 100)
         player.name = "player"
@@ -94,7 +103,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     private func createLetterObstacle(letter: Character, position: CGPoint) {
-        let box = SKSpriteNode(imageNamed: "obstacle")
+        let randNumber = Int.random(in: 1...3)
+        let box = SKSpriteNode(imageNamed: "rock\(randNumber)")
         box.size = CGSize(width: 70, height: 70)
         box.position = position
         box.name = "obstacle"
@@ -141,25 +151,45 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         // DIITAMBAHKAN: Mainkan suara tembak & haptic ringan
         // Pastikan nama file suaranya benar
-        run(SKAction.playSoundFileNamed("shoot_sound.mp3", waitForCompletion: false))
+        run(shootSound)
         HapticsManager.shared.impact(style: .light)
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         // shoot() dihapus dari sini.
         // Fungsi ini sekarang hanya untuk memulai deteksi sentuhan.
+        if let touch = touches.first {
+            previousTouchPosition = touch.location(in: self)
+        }
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         // Fungsi ini tidak berubah, tetap untuk menggerakkan pesawat.
-        guard let touch = touches.first else { return }
+        guard let touch = touches.first,
+              let previousPosition = previousTouchPosition else { return }
         let location = touch.location(in: self)
+        
         player.position.x = location.x
+        
+        let deltaX = location.x - previousPosition.x
+        
+        if deltaX > 0 {
+            // Gerak ke kanan
+            player.texture = spaceshipRight
+        } else if deltaX < 0 {
+            // Gerak ke kiri
+            player.texture = spaceshipLeft
+        } else {
+            // Tidak bergerak, idle
+            player.texture = spaceshipIdle
+        }
     }
     
     // DIUBAH: Tambahkan fungsi touchesEnded
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         // Panggil shoot() di sini, saat jari diangkat dari layar.
+        previousTouchPosition = nil
+        player.texture = spaceshipIdle
         shoot()
     }
     
@@ -232,13 +262,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             gameState.correctLetterShot()
             obstacle.removeFromParent()
             // DIITAMBAHKAN: Haptic dan suara untuk tembakan benar (tapi belum selesai kata)
+            run(explosionSound)
             HapticsManager.shared.impact(style: .medium)
         } else {
             print("Wrong shot! Hit \(letterInBox), expected \(targetLetter)")
             gameState.incorrectAction()
             // DIITAMBAHKAN: Haptic dan suara untuk tembakan salah
             HapticsManager.shared.trigger(.error)
-            run(SKAction.playSoundFileNamed("explosion_sound.mp3", waitForCompletion: false))
+            run(wrongSound)
             
             // Animasi getar untuk obstacle yang salah
             let shake = SKAction.sequence([
@@ -267,6 +298,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         // DIITAMBAHKAN: Haptic berat & suara tabrakan
         HapticsManager.shared.trigger(.error)
-        run(SKAction.playSoundFileNamed("explosion_sound.mp3", waitForCompletion: false))
+        run(explosionSound)
     }
 }

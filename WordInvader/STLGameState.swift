@@ -7,7 +7,7 @@
 
 import Foundation
 
-class GameState: ObservableObject {
+class STLGameState: ObservableObject {
     @Published var score: Int = 0
     @Published var lives: Int = 50
     @Published var isGameOver: Bool = false
@@ -15,7 +15,7 @@ class GameState: ObservableObject {
     @Published var currentLetterIndex: Int = 0
     
     // Tambahkan properti untuk referensi ke scene
-    weak var scene: GameScene?
+    weak var scene: STLGameScene?
     
     private var wordList: [String]
     private var currentWordIndexInList: Int = -1
