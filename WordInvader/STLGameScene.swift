@@ -291,7 +291,6 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             node.removeFromParent()
         }
         
-        gameState.incorrectAction()
 //        gameState.incorrectAction()
         gameState.skipToNextWord()
         
