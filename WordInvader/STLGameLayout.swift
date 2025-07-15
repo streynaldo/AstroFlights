@@ -6,58 +6,37 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct STLGameLayout: View {
-    // Ambil SwiftData context dari environment
-//    @Environment(\.modelContext) private var modelContext
-    // Query untuk mengambil semua kata dari database
-//    @Query private var words: [WordItem]
+    private var words: [String] = WordGenerator().wordList
     
-    private var words : [String] = WordGenerator().wordList
-    
-    // State untuk mengontrol apakah game sedang berjalan
     @State private var isGameActive = false
-    // State untuk menyimpan game state object
     @State private var gameState: STLGameState?
     
-    // DIITAMBAHKAN: StateObject untuk GameKitManager
     @StateObject private var gameKitManager = GameKitManager()
     
     var body: some View {
         ZStack {
-            if isGameActive, let gameState = gameState {
-                // Jika game aktif, tampilkan GameView
-                // DIUBAH: Tambahkan parameter gameKitManager di sini
-                STLGameView(gameState: gameState, gameKitManager: gameKitManager)
-                    .onChange(of: gameState.isGameOver) { _, isOver in
-                        if isOver {
-                            isGameActive = false
-                        }
-                    }
+            if isGameActive, let currentGameState = gameState {
+                STLGameView(gameState: currentGameState, gameKitManager: gameKitManager)
             } else {
-                // Tampilkan Menu Utama atau Layar Game Over
                 VStack(spacing: 20) {
                     Text("Word Invaders")
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                     
-                    if let finalScore = gameState?.score {
-                        Text("Game Over!\nFinal Score: \(finalScore)")
+                    if let finishedGameState = gameState, finishedGameState.isGameOver {
+                        Text("Game Over!\nFinal Score: \(finishedGameState.score)")
                             .font(.title)
                             .multilineTextAlignment(.center)
+                            .padding()
                     }
                     
                     Button(action: startGame) {
-                        Text(gameState == nil ? "Start Game" : "Play Again")
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(15)
+                        Text(gameState == nil || gameState!.isGameOver ? "Start Game" : "Play Again")
+                            .font(.title).fontWeight(.bold).padding()
+                            .background(Color.blue).foregroundColor(.white).cornerRadius(15)
                     }
                     
-                    // DIITAMBAHKAN: Tombol untuk Leaderboard
                     if gameKitManager.isAuthenticated {
                         Button(action: gameKitManager.showLeaderboard) {
                             HStack {
@@ -70,24 +49,25 @@ struct STLGameLayout: View {
             }
         }
         .preferredColorScheme(.dark)
-        .onAppear(perform: gameKitManager.authenticatePlayer) // Otentikasi saat app muncul
+        .onAppear(perform: gameKitManager.authenticatePlayer)
+        .onReceive(NotificationCenter.default.publisher(for: .didSTLGameOver)) { notification in
+            if let finishedGame = notification.object as? STLGameState, self.gameState === finishedGame {
+                finishedGame.checkAchievementsAndSubmitScore(
+                    for: gameKitManager,
+                    finalScore: finishedGame.score
+                )
+                self.isGameActive = false
+            }
+        }
     }
     
     private func startGame() {
-        // Ambil teks dari WordItem
-        let wordStrings = words.map { $0 }
-        guard !wordStrings.isEmpty else {
-            print("No words found in the database!")
+        guard !words.isEmpty else {
+            print("No words found!")
             return
         }
         
-        // Buat instance GameState baru dan mulai game
-        self.gameState = STLGameState(words: wordStrings)
+        self.gameState = STLGameState(words: words)
         self.isGameActive = true
     }
-}
-
-#Preview {
-    STLGameLayout()
-        .modelContainer(for: WordItem.self, inMemory: true)
 }
