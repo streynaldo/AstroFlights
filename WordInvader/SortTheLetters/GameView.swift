@@ -10,92 +10,87 @@ import SpriteKit
 
 struct GameView: View {
     @ObservedObject var gameState: GameState
-    @ObservedObject var gameKitManager: GameKitManager // Properti ini perlu diinisialisasi
+    @ObservedObject var gameKitManager: GameKitManager
     
-    @State private var scene: GameScene
+    @State private var scene: GameScene?
     @State private var showSuccessAnimation = false
-    
-    // DIUBAH: Tambahkan gameKitManager ke parameter init
-    init(gameState: GameState, gameKitManager: GameKitManager) {
-        self.gameState = gameState
-        self.gameKitManager = gameKitManager // Inisialisasi properti ini
-        
-        let initialScene = GameScene(size: UIScreen.main.bounds.size)
-        initialScene.scaleMode = .aspectFill
-        initialScene.gameState = gameState
-        
-        _scene = State(initialValue: initialScene)
-        
-        gameState.scene = initialScene
-    }
+    @State private var showHighScoreAnimation = false
     
     var body: some View {
         ZStack {
-            SpriteView(scene: scene)
-                .ignoresSafeArea()
+            if let gameScene = scene {
+                SpriteView(scene: gameScene)
+                    .ignoresSafeArea()
+            } else {
+                Color.black.ignoresSafeArea()
+            }
             
-            // UI tidak perlu diubah
             VStack {
                 HStack {
                     Text("Score: \(gameState.score)")
-                        .font(.headline)
-                        .foregroundColor(.white)
+                        .font(.headline).foregroundColor(.white)
                     Spacer()
                     Text("Lives: \(gameState.lives)")
-                        .font(.headline)
-                        .foregroundColor(.white)
+                        .font(.headline).foregroundColor(.white)
                 }
                 .padding(.horizontal)
                 
-                Text("Target: \(gameState.currentWord)")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .padding()
-                    .background(Color.white.opacity(0.3))
-                    .cornerRadius(10)
-                    .padding(.bottom, 50)
+                TargetWordView(
+                    targetWord: gameState.currentWord,
+                    highlightedUntilIndex: gameState.currentLetterIndex
+                )
                 
                 Spacer()
             }
             .padding()
             
-            // DIITAMBAHKAN: Tampilkan animasi "SUCCESS" di atas segalanya
             if showSuccessAnimation {
                 Text("KATA SELESAI!")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundColor(.green)
-                    .transition(.scale.combined(with: .opacity))
-                    .zIndex(10) // Pastikan di paling depan
+                    .transition(.scale.combined(with: .opacity)).zIndex(10)
+            }
+            
+            if showHighScoreAnimation {
+                Text("REKOR BARU!")
+                    .font(.system(size: 52, weight: .black, design: .rounded))
+                    .foregroundColor(.yellow).shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 3)
+                    .transition(.scale.combined(with: .opacity)).zIndex(11)
             }
         }
-        .onAppear(perform: {
-            // Setup callback saat view muncul
-            gameState.onWordCompleted = {
-                // Mainkan haptic sukses
-                HapticsManager.shared.trigger(.success)
-                
-                // Mainkan suara sukses
-                scene.run(SKAction.playSoundFileNamed("success_sound.mp3", waitForCompletion: false))
-                
-                // Tampilkan animasi, lalu sembunyikan setelah sesaat
-                withAnimation(.spring()) {
-                    showSuccessAnimation = true
-                }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    withAnimation(.easeOut) {
-                        showSuccessAnimation = false
-                    }
-                }
+        .onAppear {
+            if scene == nil {
+                let newScene = GameScene(size: UIScreen.main.bounds.size)
+                newScene.scaleMode = .aspectFill
+                newScene.gameState = gameState
+                gameState.scene = newScene
+                self.scene = newScene
             }
+            setupCallbacks()
             gameState.startGame()
-        })
-        // DIITAMBAHKAN: Deteksi saat game over
-        .onChange(of: gameState.isGameOver) { _, isOver in
-            if isOver {
-                // Panggil fungsi untuk submit skor dan cek achievement
-                gameState.checkAchievementsAndSubmitScore(for: gameKitManager, finalScore: gameState.score)
+        }
+    }
+    
+    private func setupCallbacks() {
+        gameState.onWordCompleted = { [weak scene] in
+            guard let scene = scene else { return }
+            HapticsManager.shared.trigger(.success)
+            scene.run(SKAction.playSoundFileNamed("success_sound.mp3", waitForCompletion: false))
+            withAnimation(.spring()) { showSuccessAnimation = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeOut) { showSuccessAnimation = false }
+            }
+        }
+        
+        gameState.onNewHighScore = {
+            HapticsManager.shared.impact(style: .heavy)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                    showHighScoreAnimation = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    withAnimation(.easeOut) { showHighScoreAnimation = false }
+                }
             }
         }
     }
@@ -103,9 +98,6 @@ struct GameView: View {
 
 #Preview {
     let sampleGameState = GameState(words: ["PREVIEW", "EXAMPLE"])
-    // DIUBAH: Tambahkan instance GameKitManager untuk preview
     let sampleGameKitManager = GameKitManager()
-    
-    // Masukkan kedua parameter ke GameView
     GameView(gameState: sampleGameState, gameKitManager: sampleGameKitManager)
 }
