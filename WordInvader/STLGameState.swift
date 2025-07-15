@@ -84,7 +84,6 @@ class STLGameState: ObservableObject {
         }
 >>>>>>> Stashed changes
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.nextWord()
         }
