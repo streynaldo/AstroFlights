@@ -31,6 +31,8 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
     let spaceshipLeft = SKTexture(imageNamed: "spaceship_left")
     let spaceshipRight = SKTexture(imageNamed: "spaceship_right")
     
+    var obstacleSpeed : CGFloat = 8
+    
     // DIITAMBAHKAN: Properti untuk background music
     private var backgroundMusic: SKAudioNode!
     
@@ -59,7 +61,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
     private func setupPlayer() {
         // DIUBAH: Menggunakan gambar dari aset untuk pesawat
         player = SKSpriteNode(imageNamed: "spaceship_idle") // Pastikan nama aset ini benar
-        player.size = CGSize(width: 70, height: 70) // Sesuaikan ukurannya jika perlu
+        player.size = CGSize(width: 60, height: 70) // Sesuaikan ukurannya jika perlu
         player.position = CGPoint(x: size.width / 2, y: 100)
         player.name = "player"
         
@@ -91,21 +93,29 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         // Acak urutan huruf untuk ditampilkan
         let shuffledLetters = Array(word).shuffled()
         
-        let boxSize: CGFloat = 45
-        let padding: CGFloat = 8
-        let totalWidth = CGFloat(shuffledLetters.count) * (boxSize + padding)
-        let startX = (size.width - totalWidth) / 2 + (boxSize / 2)
+//        let boxSize: CGFloat = 45
+//        let padding: CGFloat = 8
+//        let totalWidth = CGFloat(shuffledLetters.count) * (boxSize + padding)
+//        let startX = (size.width - totalWidth) / 2 + (boxSize / 2)
+        
+        let spacing = size.width / CGFloat(shuffledLetters.count + 1)
+        
+        // Hitung pengurang dari score
+        let speedUpFactor = floor(Double(gameState.score / 100) * 0.5)
+        
+        // Hitung durasi final, clamp ke minimum misalnya 3 detik
+        obstacleSpeed = max(4.0, obstacleSpeed - speedUpFactor)
         
         for (index, letter) in shuffledLetters.enumerated() {
-            let xPos = startX + CGFloat(index) * (boxSize + padding)
-            createLetterObstacle(letter: letter, position: CGPoint(x: xPos, y: size.height + 50))
+            let xPos = spacing * CGFloat(index + 1)
+            createLetterObstacle(letter: letter, position: CGPoint(x: xPos, y: size.height + 50), duration: obstacleSpeed)
         }
     }
     
-    private func createLetterObstacle(letter: Character, position: CGPoint) {
+    private func createLetterObstacle(letter: Character, position: CGPoint, duration: CGFloat) {
         let randNumber = Int.random(in: 1...3)
         let box = SKSpriteNode(imageNamed: "rock\(randNumber)")
-        box.size = CGSize(width: 70, height: 70)
+        box.size = CGSize(width: 50, height: 50)
         box.position = position
         box.name = "obstacle"
         
@@ -121,7 +131,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         box.physicsBody?.contactTestBitMask = PhysicsCategory.player.rawValue | PhysicsCategory.bullet.rawValue
         box.physicsBody?.collisionBitMask = PhysicsCategory.none.rawValue
         
-        let moveAction = SKAction.moveTo(y: -50, duration: 20.0)
+        let moveAction = SKAction.moveTo(y: -50, duration: duration)
         let removeAction = SKAction.removeFromParent()
         box.run(SKAction.sequence([moveAction, removeAction]))
         
