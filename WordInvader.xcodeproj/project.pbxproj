@@ -10,9 +10,22 @@
 		374650772E1E0AE70036641C /* WordInvader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WordInvader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		37919D902E25F0AB009E21C7 /* Exceptions for "WordInvader" folder in "WordInvader" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 374650762E1E0AE70036641C /* WordInvader */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		374650792E1E0AE70036641C /* WordInvader */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				37919D902E25F0AB009E21C7 /* Exceptions for "WordInvader" folder in "WordInvader" target */,
+			);
 			path = WordInvader;
 			sourceTree = "<group>";
 		};
@@ -251,10 +264,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WordInvader/WordInvader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3936S63Y3Q;
+				DEVELOPMENT_TEAM = QMURXCTWQ7;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WordInvader/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Word Invader";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
@@ -265,7 +281,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = AppleDevAcademy.WordInvader;
+				PRODUCT_BUNDLE_IDENTIFIER = com.louisfernando.wordinvaders;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -278,10 +294,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WordInvader/WordInvader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3936S63Y3Q;
+				DEVELOPMENT_TEAM = QMURXCTWQ7;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WordInvader/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Word Invader";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
@@ -292,7 +311,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = AppleDevAcademy.WordInvader;
+				PRODUCT_BUNDLE_IDENTIFIER = com.louisfernando.wordinvaders;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
