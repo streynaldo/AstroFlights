@@ -126,6 +126,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         
         if spaceshipHit && letterNode != nil {
             run(explosionSound)
+            HapticsManager.shared.trigger(.error)
             createExplosion(at: spaceship.position)
             letterNode?.removeFromParent() // hapus obstacle yang kena
             //            NABRAK MINUS HP
@@ -167,6 +168,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             task.fill(letter: letter)
             createExplosion(at: hit.position)
             run(explosionSound)
+            HapticsManager.shared.impact(style: .medium)
             hit.removeFromParent()
             gameManager.currentTaskText = task.display
             
@@ -184,6 +186,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         } else {
             // SELALU kurangi HP kalau huruf SALAH atau decoy
             run(wrongSound)
+            HapticsManager.shared.trigger(.error)
             gameManager.health -= 5
             if gameManager.health <= 0 {
                 resetGame(isGameOver: true)
@@ -255,6 +258,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         spaceship.texture = spaceshipIdle
         fireBullet()
         run(shootSound)
+        HapticsManager.shared.impact(style: .light)
     }
     
     
