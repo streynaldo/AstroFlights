@@ -74,10 +74,18 @@ class STLGameState: ObservableObject {
     
     // Fungsi baru jika pemain menabrak rintangan
     func skipToNextWord() {
+<<<<<<< Updated upstream
         score -= 5 // Beri penalti karena menabrak
         if score < 0 { score = 0 }
+=======
+        lives -= 10 // Beri penalti karena menabrak
+        if lives <= 0 {
+            gameOver()
+        }
+>>>>>>> Stashed changes
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.nextWord()
         }
     }

@@ -292,6 +292,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         }
         
         gameState.incorrectAction()
+//        gameState.incorrectAction()
         gameState.skipToNextWord()
         
         print("Player hit an obstacle row. Lives left: \(gameState.lives)")
