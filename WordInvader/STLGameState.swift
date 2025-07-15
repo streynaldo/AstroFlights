@@ -9,7 +9,7 @@ import Foundation
 
 class STLGameState: ObservableObject {
     @Published var score: Int = 0
-    @Published var lives: Int = 50
+    @Published var lives: Int = 100
     @Published var isGameOver: Bool = false
     @Published var currentWord: String = ""
     @Published var currentLetterIndex: Int = 0
@@ -61,7 +61,7 @@ class STLGameState: ObservableObject {
         currentLetterIndex += 1
         
         if currentLetterIndex >= currentWord.count {
-            score += 2000
+            score += 50
             
             // DIITAMBAHKAN: Panggil closure saat kata selesai
             onWordCompleted?()
@@ -74,15 +74,10 @@ class STLGameState: ObservableObject {
     
     // Fungsi baru jika pemain menabrak rintangan
     func skipToNextWord() {
-<<<<<<< Updated upstream
-        score -= 5 // Beri penalti karena menabrak
-        if score < 0 { score = 0 }
-=======
         lives -= 10 // Beri penalti karena menabrak
         if lives <= 0 {
             gameOver()
         }
->>>>>>> Stashed changes
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.nextWord()
@@ -90,7 +85,7 @@ class STLGameState: ObservableObject {
     }
     
     func incorrectAction() {
-        lives -= 1
+        lives -= 5
         if lives <= 0 {
             gameOver()
         }
