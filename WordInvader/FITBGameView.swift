@@ -11,6 +11,7 @@ struct FITBGameView: View {
     @StateObject private var gameManager = GameManager.shared
     
     @State private var scene = FITBGameScene(size: CGSize(width: 400, height: 800))
+    @StateObject private var gameKitManager = GameKitManager()
     
 //    var scene: SKScene {
 //        let scene = GameScene()
@@ -142,6 +143,15 @@ struct FITBGameView: View {
                 }
                 .padding(40)
                 .background(Color.black.opacity(0.95).ignoresSafeArea())
+            }
+        }
+        .onAppear(perform: gameKitManager.authenticatePlayer) // kalo udah ada main menu ini dipindah aja
+        .onReceive(NotificationCenter.default.publisher(for: .didFITBGameOver)) { notification in
+            if let finishedGame = notification.object as? FITBGameScene, self.gameManager.isGameOver == true {
+                finishedGame.checkAchievementsAndSubmitScore(
+                    for: gameKitManager,
+                    finalScore: finishedGame.score
+                )
             }
         }
     }

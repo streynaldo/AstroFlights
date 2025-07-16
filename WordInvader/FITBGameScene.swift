@@ -8,6 +8,10 @@
 import SpriteKit
 import AVFoundation
 
+extension Notification.Name {
+    static let didFITBGameOver = Notification.Name("didFITBGameOver")
+}
+
 class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     
     var spaceship: SKSpriteNode!
@@ -17,6 +21,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     let gameManager = GameManager.shared
     
     var currentTask: WordTask!
+    var score : Int = 0
     
     var isResetting = false
     
@@ -27,6 +32,9 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     let spaceshipIdle = SKTexture(imageNamed: "spaceship_idle")
     let spaceshipLeft = SKTexture(imageNamed: "spaceship_left")
     let spaceshipRight = SKTexture(imageNamed: "spaceship_right")
+    
+    var onNewHighScore: (() -> Void)?
+    private var personalHighScore: Int = (UserDefaults.standard.integer(forKey: "personalHighScore_FITB") != 0) ? UserDefaults.standard.integer(forKey: "personalHighScore_FITB") : 0
     
     var obstacleSpeed : CGFloat = 8
     
@@ -174,6 +182,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             
             if task.isComplete {
                 gameManager.score += 50
+                score += 50
                 currentTask = nil
                 gameManager.currentTaskText = "Good Job"
                 run(SKAction.sequence([
@@ -398,6 +407,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         playBGM()
         obstacleSpeed = 8
         gameManager.score = 0
+        score = 0
         gameManager.health = 100
         gameManager.isGameOver = false
         isResetting = false
@@ -428,6 +438,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         
         if isGameOver {
             // Kalau game over → tunggu sebentar, baru restart total
+            NotificationCenter.default.post(name: .didFITBGameOver, object: self)
             run(SKAction.sequence([
                 SKAction.wait(forDuration: 2.0),
                 SKAction.run { [weak self] in
@@ -442,6 +453,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         } else {
             // Kalau reset biasa → spawn lagi cepat
             gameManager.score = 0
+            score = 0
             gameManager.health = 100
             run(SKAction.sequence([
                 SKAction.wait(forDuration: 0.5),
@@ -459,6 +471,29 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     
     func playBGM() {
         backgroundMusic?.run(SKAction.play())
+    }
+    
+    func checkAchievementsAndSubmitScore(for manager: GameKitManager, finalScore: Int) {
+        manager.submitScore(finalScore, to: "wordinvaders_fitb_leaderboard")
+        
+        if finalScore >= 100 {
+            manager.reportAchievement(identifier: "achievement_score_100")
+        }
+        if finalScore >= 1000 {
+            manager.reportAchievement(identifier: "achievement_legendary_score")
+        }
+        
+        if finalScore > self.personalHighScore {
+            self.personalHighScore = finalScore
+            manager.reportAchievement(identifier: "achievement_personal_best")
+            onNewHighScore?()
+            saveHighScoreToDevice()
+            print("New personal high score: \(finalScore)")
+        }
+    }
+    
+    private func saveHighScoreToDevice() {
+        UserDefaults.standard.set(self.personalHighScore, forKey: "personalHighScore_STL")
     }
     
     func randomMotivation() -> String {
