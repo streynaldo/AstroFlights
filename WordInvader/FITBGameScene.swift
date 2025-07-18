@@ -45,15 +45,13 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
             backgroundMusic = SKAudioNode(url: musicURL)
             backgroundMusic?.autoplayLooped = true
-            addChild(backgroundMusic!)
+            if let bgm = backgroundMusic {
+                addChild(bgm)
+            }
         }
         
-        let background = SKSpriteNode(imageNamed: "background")
-            background.position = CGPoint(x: size.width/2, y: size.height/2)
-            background.zPosition = -1  // Pastikan di belakang semua node
-            background.size = size     // Atur agar full screen
-
-            addChild(background)
+        // Setup Parallax Background
+        setupParallaxBackground()
         
         // Spaceship setup...
         spaceship = SKSpriteNode(imageNamed: "spaceship_idle")
@@ -61,26 +59,100 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         spaceship.position = CGPoint(x: size.width / 2, y: 100)
         addChild(spaceship)
         
-        // 🚨 Ini WAJIB 🚨
         physicsWorld.contactDelegate = self
         
-        // physics body ke spaceship
+        // Physics body ke spaceship
         spaceship.physicsBody = SKPhysicsBody(rectangleOf: spaceship.size)
-        spaceship.physicsBody?.isDynamic = false // Supaya spaceship gak kena gravity
-        spaceship.physicsBody?.categoryBitMask = 0x1 << 2 // 🚀 spaceship = kategori 2
-        spaceship.physicsBody?.contactTestBitMask = 0x1 << 1 // bisa kontak dengan obstacle
+        spaceship.physicsBody?.isDynamic = false
+        spaceship.physicsBody?.categoryBitMask = 0x1 << 2
+        spaceship.physicsBody?.contactTestBitMask = 0x1 << 1
         spaceship.physicsBody?.collisionBitMask = 0
         
         let floorNode = SKNode()
-        floorNode.position = CGPoint(x: size.width / 2, y: 0) // dasar screen
+        floorNode.position = CGPoint(x: size.width / 2, y: 0)
         floorNode.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: size.width, height: 10))
         floorNode.physicsBody?.isDynamic = false
-        floorNode.physicsBody?.categoryBitMask = 0x1 << 3 // FLOOR = kategori 3
-        floorNode.physicsBody?.contactTestBitMask = 0x1 << 1 // obstacle = kategori 1
+        floorNode.physicsBody?.categoryBitMask = 0x1 << 3
+        floorNode.physicsBody?.contactTestBitMask = 0x1 << 1
         floorNode.physicsBody?.collisionBitMask = 0
         addChild(floorNode)
         
         spawnObstacleRow()
+    }
+    
+    override func update(_ currentTime: TimeInterval) {
+        // Gerakkan semua lapisan background
+        moveBackgroundNode(layerName: "starfield", speed: 0.2)
+        moveBackgroundNode(layerName: "parallax_layer_1", speed: 0.5)
+        moveBackgroundNode(layerName: "parallax_layer_2", speed: 1.0)
+        moveBackgroundNode(layerName: "parallax_layer_3", speed: 2.5)
+    }
+    
+    private func setupParallaxBackground() {
+        setupStarfield()
+        createScrollingLayer(textureName: "Galaxt", name: "parallax_layer_1", zPosition: -10, density: 3)
+        createScrollingLayer(textureName: "dc3", name: "parallax_layer_2", zPosition: -9, density: 4)
+        createScrollingLayer(textureName: "Light cloud", name: "parallax_layer_3", zPosition: -8, density: 5)
+    }
+    
+    private func setupStarfield() {
+        for _ in 0..<50 {
+            let starNumber = Int.random(in: 1...5)
+            let starTexture = SKTexture(imageNamed: "star\(starNumber)")
+            let star = SKSpriteNode(texture: starTexture)
+            
+            let randomX = CGFloat.random(in: 0...self.size.width)
+            let randomY = CGFloat.random(in: 0...self.size.height * 2)
+            star.position = CGPoint(x: randomX, y: randomY)
+            
+            let randomScale = CGFloat.random(in: 0.1...0.5)
+            star.setScale(randomScale)
+            
+            star.zPosition = -11
+            star.name = "starfield"
+            addChild(star)
+        }
+    }
+    
+    private func createScrollingLayer(textureName: String, name: String, zPosition: CGFloat, density: Int) {
+        let texture = SKTexture(imageNamed: textureName)
+        
+        let numberOfColumns = 3
+        let columnWidth = self.size.width / CGFloat(numberOfColumns)
+        
+        for i in 0..<density {
+            let node = SKSpriteNode(texture: texture)
+            
+            // Atur ukuran dasar yang kecil DAN JAGA RASIO ASPEK
+            let aspectRatio = texture.size().height / texture.size().width
+            let nodeWidth = self.size.width * CGFloat.random(in: 0.2...0.4) // Aset akan memakan 20-40% lebar layar
+            node.size = CGSize(width: nodeWidth, height: nodeWidth * aspectRatio)
+            
+            // Logika posisi berpola
+            let columnIndex = i % numberOfColumns
+            let jitter = CGFloat.random(in: -columnWidth/4 ... columnWidth/4)
+            let xPos = (CGFloat(columnIndex) * columnWidth) + (columnWidth / 2) + jitter
+            
+            // Sebar posisi Y secara merata di area scrolling
+            let yPos = (self.size.height * 1.5 / CGFloat(density)) * CGFloat(i) + self.size.height
+            
+            node.position = CGPoint(x: xPos, y: yPos)
+            node.zPosition = zPosition
+            node.name = name
+            addChild(node)
+        }
+    }
+    
+    private func moveBackgroundNode(layerName: String, speed: CGFloat) {
+        self.enumerateChildNodes(withName: layerName) { (node, stop) in
+            node.position.y -= speed
+            
+            if node.position.y < -node.frame.size.height {
+                let randomX = CGFloat.random(in: 0...self.size.width)
+                node.position.y += self.size.height * 2 + node.frame.size.height
+                node.position.x = randomX
+            }
+        }
     }
     
     func didBegin(_ contact: SKPhysicsContact) {

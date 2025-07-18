@@ -39,6 +39,8 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         physicsWorld.gravity = CGVector(dx: 0, dy: 0)
         physicsWorld.contactDelegate = self
         
+        setupParallaxBackground()
+        
         setupPlayer()
         setupAudio()
     }
@@ -50,6 +52,11 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             print("Word missed! Skipping to the next one.")
             gameState.skipToNextWord()
         }
+        
+        moveBackgroundNode(layerName: "starfield", speed: 0.2)
+        moveBackgroundNode(layerName: "parallax_layer_1", speed: 0.5)
+        moveBackgroundNode(layerName: "parallax_layer_2", speed: 1.0)
+        moveBackgroundNode(layerName: "parallax_layer_3", speed: 2.5)
     }
     
     private func setupAudio() {
@@ -277,4 +284,74 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         HapticsManager.shared.trigger(.error)
         run(explosionSound)
     }
+    
+    private func setupParallaxBackground() {
+        setupStarfield()
+        createScrollingLayer(textureName: "Galaxt", name: "parallax_layer_1", zPosition: -10, density: 3)
+        createScrollingLayer(textureName: "dc3", name: "parallax_layer_2", zPosition: -9, density: 4)
+        createScrollingLayer(textureName: "Light cloud", name: "parallax_layer_3", zPosition: -8, density: 5)
+    }
+    
+    private func setupStarfield() {
+        for _ in 0..<50 {
+            let starNumber = Int.random(in: 1...5)
+            let starTexture = SKTexture(imageNamed: "star\(starNumber)")
+            let star = SKSpriteNode(texture: starTexture)
+            
+            let randomX = CGFloat.random(in: 0...self.size.width)
+            let randomY = CGFloat.random(in: 0...self.size.height * 2)
+            star.position = CGPoint(x: randomX, y: randomY)
+            
+            let randomScale = CGFloat.random(in: 0.1...0.5)
+            star.setScale(randomScale)
+            
+            star.zPosition = -11
+            star.name = "starfield"
+            
+            addChild(star)
+        }
+    }
+    
+    private func createScrollingLayer(textureName: String, name: String, zPosition: CGFloat, density: Int) {
+        let texture = SKTexture(imageNamed: textureName)
+        
+        let numberOfColumns = 3
+        let columnWidth = self.size.width / CGFloat(numberOfColumns)
+        
+        for i in 0..<density {
+            let node = SKSpriteNode(texture: texture)
+            
+            let columnIndex = i % numberOfColumns
+            
+            let jitter = CGFloat.random(in: -columnWidth/4 ... columnWidth/4)
+            let xPos = (CGFloat(columnIndex) * columnWidth) + (columnWidth / 2) + jitter
+            
+            let yPos = (self.size.height / CGFloat(density)) * CGFloat(i) + node.size.height
+            
+            node.position = CGPoint(x: xPos, y: yPos)
+            
+            let baseSize = CGSize(width: 250, height: 250)
+            node.size = baseSize
+            
+            let randomScale = CGFloat.random(in: 0.5...1.0)
+            node.setScale(randomScale)
+            
+            node.zPosition = zPosition
+            node.name = name
+            addChild(node)
+        }
+    }
+    
+    private func moveBackgroundNode(layerName: String, speed: CGFloat) {
+        self.enumerateChildNodes(withName: layerName) { (node, stop) in
+            node.position.y -= speed
+            
+            if node.position.y < -node.frame.size.height {
+                let randomX = CGFloat.random(in: 0...self.size.width)
+                node.position.y += self.size.height * 2 + node.frame.size.height
+                node.position.x = randomX
+            }
+        }
+    }
+    
 }
