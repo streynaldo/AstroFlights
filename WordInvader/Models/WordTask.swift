@@ -8,18 +8,18 @@
 import Foundation
 
 class WordTask {
-    let word: String
+    let word: Word
     let blankIndexes: [Int]
     var guessedLetters: Set<Character> = []
 
-    init(word: String, blanks: [Int]) {
+    init(word: Word, blanks: [Int]) {
         self.word = word
         self.blankIndexes = blanks
     }
 
     var remainingLetters: [Character] {
         blankIndexes.map {
-            let letter = word[word.index(word.startIndex, offsetBy: $0)]
+            let letter = word.text[word.text.index(word.text.startIndex, offsetBy: $0)]
             return letter
         }.filter { !guessedLetters.contains($0) }
     }
@@ -33,7 +33,7 @@ class WordTask {
     }
 
     var display: String {
-        String(word.enumerated().map {
+        String(word.text.enumerated().map {
             blankIndexes.contains($0.offset) && !guessedLetters.contains($0.element) ? "_" : $0.element
         })
     }

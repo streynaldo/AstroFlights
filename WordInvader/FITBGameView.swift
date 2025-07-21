@@ -6,24 +6,22 @@
 //
 import SwiftUI
 import SpriteKit
+import SwiftData
 
 struct FITBGameView: View {
     @StateObject private var gameManager = GameManager.shared
+    @Environment(\.modelContext) private var modelContext
     
     @State private var scene = FITBGameScene(size: CGSize(width: 400, height: 800))
     @StateObject private var gameKitManager = GameKitManager()
-    
-//    var scene: SKScene {
-//        let scene = GameScene()
-//        scene.size = CGSize(width: 400, height: 800)
-//        scene.scaleMode = .resizeFill
-//        return scene
-//    }
+    @State private var wordDataManager: WordDataManager?
+    @State private var isPaused = false
     
     var body: some View {
         ZStack {
             SpriteView(scene: scene)
                 .ignoresSafeArea()
+            
             if !gameManager.isGameOver {
                 VStack {
                     HStack(spacing: 16) {
@@ -88,11 +86,74 @@ struct FITBGameView: View {
                                 .stroke(Color.red, lineWidth: 2)
                         )
                         .cornerRadius(4)
+                        
+                        // PAUSE BUTTON
+                        Button(action: {
+                            togglePause()
+                        }) {
+                            Image(systemName: isPaused ? "play.fill" : "pause.fill")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(Color.black.opacity(0.7))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(Color.white, lineWidth: 2)
+                                )
+                                .cornerRadius(4)
+                        }
                     }
                     Spacer()
                 }
                 .padding(.top, 50)
             }
+            
+            // PAUSE OVERLAY
+            if isPaused && !gameManager.isGameOver {
+                VStack(spacing: 30) {
+                    Text("PAUSED")
+                        .font(.system(size: 48, weight: .black, design: .monospaced))
+                        .foregroundColor(.white)
+                        .shadow(color: .black, radius: 2, x: 2, y: 2)
+                    
+                    VStack(spacing: 20) {
+                        Button(action: {
+                            togglePause()
+                        }) {
+                            Text("RESUME")
+                                .font(.system(size: 20, weight: .black, design: .monospaced))
+                                .foregroundColor(.black)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 40)
+                                .background(Color.green)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 0)
+                                        .stroke(Color.white, lineWidth: 2)
+                                )
+                                .shadow(color: .white, radius: 0, x: 3, y: 3)
+                        }
+                        
+                        Button(action: {
+                            restartGame()
+                        }) {
+                            Text("RESTART")
+                                .font(.system(size: 20, weight: .black, design: .monospaced))
+                                .foregroundColor(.black)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 40)
+                                .background(Color.yellow)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 0)
+                                        .stroke(Color.white, lineWidth: 2)
+                                )
+                                .shadow(color: .white, radius: 0, x: 3, y: 3)
+                        }
+                    }
+                }
+                .padding(40)
+                .background(Color.black.opacity(0.9).ignoresSafeArea())
+            }
+            
             if gameManager.isGameOver {
                 VStack(spacing: 20) {
                     // GAME OVER TITLE
@@ -145,7 +206,10 @@ struct FITBGameView: View {
                 .background(Color.black.opacity(0.95).ignoresSafeArea())
             }
         }
-        .onAppear(perform: gameKitManager.authenticatePlayer) // kalo udah ada main menu ini dipindah aja
+        .onAppear {
+            gameKitManager.authenticatePlayer()
+            setupWordDataManager()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .didFITBGameOver)) { notification in
             if let finishedGame = notification.object as? FITBGameScene, self.gameManager.isGameOver == true {
                 finishedGame.checkAchievementsAndSubmitScore(
@@ -154,5 +218,28 @@ struct FITBGameView: View {
                 )
             }
         }
+    }
+    
+    private func setupWordDataManager() {
+        let manager = WordDataManager(modelContext: modelContext)
+        wordDataManager = manager
+        scene.configure(with: manager)
+    }
+    
+    private func togglePause() {
+        isPaused.toggle()
+        scene.isPaused = isPaused
+        
+        if isPaused {
+            scene.pauseGame()
+        } else {
+            scene.resumeGame()
+        }
+    }
+    
+    private func restartGame() {
+        isPaused = false
+        scene.isPaused = false
+        scene.startNewGame()
     }
 }
