@@ -25,24 +25,39 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     
     var isResetting = false
     
-    let shootSound = SKAction.playSoundFileNamed("shoot.mp3", waitForCompletion: false)
-    let explosionSound = SKAction.playSoundFileNamed("explosion.mp3", waitForCompletion: false)
-    let wrongSound = SKAction.playSoundFileNamed("wrong.mp3", waitForCompletion: false)
+    let shootSound = SKAction.playSoundFileNamed(
+        "shoot.mp3",
+        waitForCompletion: false
+    )
+    let explosionSound = SKAction.playSoundFileNamed(
+        "explosion.mp3",
+        waitForCompletion: false
+    )
+    let wrongSound = SKAction.playSoundFileNamed(
+        "wrong.mp3",
+        waitForCompletion: false
+    )
     
     let spaceshipIdle = SKTexture(imageNamed: "spaceship_idle")
     let spaceshipLeft = SKTexture(imageNamed: "spaceship_left")
     let spaceshipRight = SKTexture(imageNamed: "spaceship_right")
     
     var onNewHighScore: (() -> Void)?
-    private var personalHighScore: Int = (UserDefaults.standard.integer(forKey: "personalHighScore_FITB") != 0) ? UserDefaults.standard.integer(forKey: "personalHighScore_FITB") : 0
+    private var personalHighScore: Int = (UserDefaults.standard.integer(forKey: "personalHighScore_FITB") != 0) ? UserDefaults.standard.integer(
+        forKey: "personalHighScore_FITB"
+    ) : 0
     
     var obstacleSpeed : CGFloat = 8
     
     var backgroundMusic: SKAudioNode?
     
+    private var windAnimation: SKAction?
+    
     override func didMove(to view: SKView) {
-        // Inisialisasi BGM
-        if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
+        if let musicURL = Bundle.main.url(
+            forResource: "bgm",
+            withExtension: "mp3"
+        ) {
             backgroundMusic = SKAudioNode(url: musicURL)
             backgroundMusic?.autoplayLooped = true
             if let bgm = backgroundMusic {
@@ -50,27 +65,18 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
         
-        // Setup Parallax Background
-        setupParallaxBackground()
+        setupWindAnimation()
         
-        // Spaceship setup...
-        spaceship = SKSpriteNode(imageNamed: "spaceship_idle")
-        spaceship.size = CGSize(width: 60, height: 70)
-        spaceship.position = CGPoint(x: size.width / 2, y: 100)
-        addChild(spaceship)
+        setupParallaxBackground()
+        setupSpaceship()
         
         physicsWorld.contactDelegate = self
         
-        // Physics body ke spaceship
-        spaceship.physicsBody = SKPhysicsBody(rectangleOf: spaceship.size)
-        spaceship.physicsBody?.isDynamic = false
-        spaceship.physicsBody?.categoryBitMask = 0x1 << 2
-        spaceship.physicsBody?.contactTestBitMask = 0x1 << 1
-        spaceship.physicsBody?.collisionBitMask = 0
-        
         let floorNode = SKNode()
         floorNode.position = CGPoint(x: size.width / 2, y: 0)
-        floorNode.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: size.width, height: 10))
+        floorNode.physicsBody = SKPhysicsBody(
+            rectangleOf: CGSize(width: size.width, height: 10)
+        )
         floorNode.physicsBody?.isDynamic = false
         floorNode.physicsBody?.categoryBitMask = 0x1 << 3
         floorNode.physicsBody?.contactTestBitMask = 0x1 << 1
@@ -81,82 +87,210 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     override func update(_ currentTime: TimeInterval) {
-        // Gerakkan semua lapisan background
-        moveBackgroundNode(layerName: "starfield", speed: 0.2)
-        moveBackgroundNode(layerName: "parallax_layer_1", speed: 0.5)
-        moveBackgroundNode(layerName: "parallax_layer_2", speed: 1.0)
-        moveBackgroundNode(layerName: "parallax_layer_3", speed: 2.5)
+        moveBackgroundStrip(speed: 0.6)
     }
+    
+    private func setupWindAnimation() {
+        var windTextures: [SKTexture] = []
+        for i in 1...4 {
+            windTextures.append(SKTexture(imageNamed: "spaceship_wind_\(i)"))
+        }
+        windAnimation = SKAction.repeatForever(
+            SKAction.animate(with: windTextures, timePerFrame: 0.1)
+        )
+    }
+    
+    private func setupSpaceship() {
+        spaceship = SKSpriteNode(imageNamed: "spaceship_idle")
+        spaceship.size = CGSize(width: 60, height: 70)
+        spaceship.position = CGPoint(x: size.width / 2, y: 100)
+        spaceship.name = "player"
+        spaceship.zPosition = 10
+        
+        let windNode = SKSpriteNode(texture: SKTexture(imageNamed: "spaceship_wind_1"))
+        windNode.size = CGSize(width: 70, height: 75)
+        windNode.position = CGPoint(x: 0, y: 3)
+        windNode.zPosition = -1
+        windNode.alpha = 0.35
+        if let windAnimation = self.windAnimation {
+            windNode.run(windAnimation)
+        }
+        
+        spaceship.addChild(windNode)
+        addChild(spaceship)
+        spaceship.physicsBody = SKPhysicsBody(rectangleOf: spaceship.size)
+        spaceship.physicsBody?.isDynamic = false
+        spaceship.physicsBody?.categoryBitMask = 0x1 << 2
+        spaceship.physicsBody?.contactTestBitMask = 0x1 << 1
+        spaceship.physicsBody?.collisionBitMask = 0
+    }
+    
     
     private func setupParallaxBackground() {
-        setupStarfield()
-        createScrollingLayer(textureName: "Galaxt", name: "parallax_layer_1", zPosition: -10, density: 3)
-        createScrollingLayer(textureName: "dc3", name: "parallax_layer_2", zPosition: -9, density: 4)
-        createScrollingLayer(textureName: "Light cloud", name: "parallax_layer_3", zPosition: -8, density: 5)
+        for i in 0...1 {
+            let strip = createCompleteParallaxStrip()
+            strip.position = CGPoint(x: 0, y: self.size.height * CGFloat(i))
+            strip.name = "parallax_strip"
+            addChild(strip)
+        }
     }
     
-    private func setupStarfield() {
-        for _ in 0..<50 {
+    private func createCompleteParallaxStrip() -> SKNode {
+        let container = SKNode()
+        var occupiedFrames = [CGRect]()
+        
+        placeAssets(
+            on: container,
+            textureNames: ["galaxy"],
+            count: 2,
+            zPosition: -9,
+            occupiedFrames: &occupiedFrames
+        )
+        placeAssets(
+            on: container,
+            textureNames: ["cloud_1", "cloud_2", "cloud_3"],
+            count: 4,
+            zPosition: -8,
+            occupiedFrames: &occupiedFrames
+        )
+        placeAssets(
+            on: container,
+            textureNames: ["cloud_4", "cloud_5", "cloud_6"],
+            count: 4,
+            zPosition: -8,
+            occupiedFrames: &occupiedFrames
+        )
+        placeStars(on: container, count: 50, zPosition: -7)
+        
+        return container
+    }
+    
+    private func placeStars(
+        on container: SKNode,
+        count: Int,
+        zPosition: CGFloat
+    ) {
+        for _ in 0..<count {
             let starNumber = Int.random(in: 1...5)
-            let starTexture = SKTexture(imageNamed: "star\(starNumber)")
-            let star = SKSpriteNode(texture: starTexture)
-            
-            let randomX = CGFloat.random(in: 0...self.size.width)
-            let randomY = CGFloat.random(in: 0...self.size.height * 2)
-            star.position = CGPoint(x: randomX, y: randomY)
-            
-            let randomScale = CGFloat.random(in: 0.1...0.5)
-            star.setScale(randomScale)
-            
-            star.zPosition = -11
-            star.name = "starfield"
-            addChild(star)
+            let star = SKSpriteNode(imageNamed: "star_\(starNumber)")
+            star.position = CGPoint(
+                x: .random(in: 0...self.size.width),
+                y: .random(in: 0...self.size.height)
+            )
+            star.setScale(.random(in: 0.05...0.2))
+            star.alpha = .random(in: 0.4...1.0)
+            star.zPosition = zPosition
+            container.addChild(star)
         }
     }
     
-    private func createScrollingLayer(textureName: String, name: String, zPosition: CGFloat, density: Int) {
-        let texture = SKTexture(imageNamed: textureName)
-        
-        let numberOfColumns = 3
-        let columnWidth = self.size.width / CGFloat(numberOfColumns)
-        
-        for i in 0..<density {
-            let node = SKSpriteNode(texture: texture)
+    private func placeAssets(
+        on container: SKNode,
+        textureNames: [String],
+        count: Int,
+        zPosition: CGFloat,
+        occupiedFrames: inout [CGRect]
+    ) {
+        for _ in 0..<count {
+            let textureName = textureNames.randomElement()!
+            let node = SKSpriteNode(imageNamed: textureName)
             
-            // Atur ukuran dasar yang kecil DAN JAGA RASIO ASPEK
-            let aspectRatio = texture.size().height / texture.size().width
-            let nodeWidth = self.size.width * CGFloat.random(in: 0.2...0.4) // Aset akan memakan 20-40% lebar layar
-            node.size = CGSize(width: nodeWidth, height: nodeWidth * aspectRatio)
+            let aspectRatio = node.texture!.size().height / node.texture!.size().width
+            let nodeWidth = self.size.width * CGFloat.random(in: 0.25...0.50)
+            node.size = CGSize(
+                width: nodeWidth,
+                height: nodeWidth * aspectRatio
+            )
             
-            // Logika posisi berpola
-            let columnIndex = i % numberOfColumns
-            let jitter = CGFloat.random(in: -columnWidth/4 ... columnWidth/4)
-            let xPos = (CGFloat(columnIndex) * columnWidth) + (columnWidth / 2) + jitter
+            var attempts = 0
+            var positionIsSafe = false
             
-            // Sebar posisi Y secara merata di area scrolling
-            let yPos = (self.size.height * 1.5 / CGFloat(density)) * CGFloat(i) + self.size.height
+            while !positionIsSafe && attempts < 20 {
+                let xPos = CGFloat.random(in: 0...self.size.width)
+                let yPos = CGFloat.random(in: 0...self.size.height)
+                node.position = CGPoint(x: xPos, y: yPos)
+                
+                let nodeFrameWithPadding = node.frame.insetBy(dx: -20, dy: -20)
+                positionIsSafe = !occupiedFrames
+                    .contains { $0.intersects(nodeFrameWithPadding) }
+                attempts += 1
+            }
             
-            node.position = CGPoint(x: xPos, y: yPos)
-            node.zPosition = zPosition
-            node.name = name
-            addChild(node)
-        }
-    }
-    
-    private func moveBackgroundNode(layerName: String, speed: CGFloat) {
-        self.enumerateChildNodes(withName: layerName) { (node, stop) in
-            node.position.y -= speed
-            
-            if node.position.y < -node.frame.size.height {
-                let randomX = CGFloat.random(in: 0...self.size.width)
-                node.position.y += self.size.height * 2 + node.frame.size.height
-                node.position.x = randomX
+            if positionIsSafe {
+                occupiedFrames.append(node.frame)
+                node.zPosition = zPosition
+                container.addChild(node)
             }
         }
     }
     
+    private func moveBackgroundStrip(speed: CGFloat) {
+        self.enumerateChildNodes(withName: "parallax_strip") { (node, stop) in
+            node.position.y -= speed
+            if node.position.y < -self.size.height {
+                node.position.y += self.size.height * 2
+            }
+        }
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !gameManager.isGameOver else { return }
+        if let touch = touches.first {
+            previousTouchPosition = touch.location(in: self)
+        }
+    }
+    
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !gameManager.isGameOver else { return }
+        guard let touch = touches.first else { return }
+        let currentPosition = touch.location(in: self)
+        
+        spaceship.position.x = currentPosition.x
+        
+        let halfPlayerWidth = spaceship.size.width / 2
+        spaceship.position.x = max(halfPlayerWidth, spaceship.position.x)
+        spaceship.position.x = min(
+            size.width - halfPlayerWidth,
+            spaceship.position.x
+        )
+        
+        if let previousPos = previousTouchPosition {
+            let deltaX = currentPosition.x - previousPos.x
+            if deltaX > 1 {
+                spaceship.texture = spaceshipRight
+            } else if deltaX < -1 {
+                spaceship.texture = spaceshipLeft
+            } else {
+                spaceship.texture = spaceshipIdle
+            }
+        }
+        previousTouchPosition = currentPosition
+    }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !gameManager.isGameOver else { return }
+        spaceship.texture = spaceshipIdle
+        
+        if let startPos = previousTouchPosition, let endPos = touches.first?.location(
+            in: self
+        ) {
+            let distance = hypot(endPos.x - startPos.x, endPos.y - startPos.y)
+            if distance < 10 {
+                fireBullet()
+            }
+        }
+        previousTouchPosition = nil
+    }
+    
+    override func touchesCancelled(
+        _ touches: Set<UITouch>,
+        with event: UIEvent?
+    ) {
+        previousTouchPosition = nil
+        spaceship.texture = spaceshipIdle
+    }
+    
     func didBegin(_ contact: SKPhysicsContact) {
-        // Jangan proses kalau sedang reset
         if isResetting { return }
         
         var letterNode: SKNode?
@@ -169,38 +303,34 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         }
         
         if floorHit {
-            if contact.bodyA.node?.name?.hasPrefix("letter_") == true {
+            if contact.bodyA.node?.name?
+                .hasPrefix("letter_") == true {
                 letterNode = contact.bodyA.node
-            } else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
+            }
+            else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
                 letterNode = contact.bodyB.node
             }
             
-            if let hit = letterNode {
-                hit.removeFromParent()
-            }
+            if let hit = letterNode { hit.removeFromParent() }
             
-            //            Kalo node kelewat minus hp
             if let task = currentTask, !task.isComplete {
                 gameManager.health -= 10
                 if gameManager.health <= 0 {
-                    resetGame(isGameOver: true)
-                    return
+                    resetGame(isGameOver: true); return
                 }
             }
             
             currentTask = nil
-            trySpawnIfClear() // langsung spawn kata baru
+            trySpawnIfClear()
             return
         }
         
-        
-        // Spaceship collision
         if contact.bodyA.node == spaceship || contact.bodyB.node == spaceship {
             spaceshipHit = true
         }
-        if contact.bodyA.node?.name?.hasPrefix("letter_") == true {
-            letterNode = contact.bodyA.node
-        } else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
+        if contact.bodyA.node?.name?
+            .hasPrefix("letter_") == true { letterNode = contact.bodyA.node }
+        else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
             letterNode = contact.bodyB.node
         }
         
@@ -208,43 +338,36 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             run(explosionSound)
             HapticsManager.shared.trigger(.error)
             createExplosion(at: spaceship.position)
-            letterNode?.removeFromParent() // hapus obstacle yang kena
-            //            NABRAK MINUS HP
+            letterNode?.removeFromParent()
             gameManager.health -= 10
-            if gameManager.health <= 0 {
-                resetGame(isGameOver: true)
-            }
+            if gameManager.health <= 0 { resetGame(isGameOver: true) }
         }
         
-        
-        // Bullet vs letter
         if contact.bodyA.node?.name == "bullet" {
             bulletNode = contact.bodyA.node
-        } else if contact.bodyB.node?.name == "bullet" {
+        }
+        else if contact.bodyB.node?.name == "bullet" {
             bulletNode = contact.bodyB.node
         }
-        // Pastikan letterNode ketemu (cari lagi kalau belum)
+        
         if letterNode == nil {
-            if contact.bodyA.node?.name?.hasPrefix("letter_") == true {
+            if contact.bodyA.node?.name?
+                .hasPrefix("letter_") == true {
                 letterNode = contact.bodyA.node
-            } else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
+            }
+            else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
                 letterNode = contact.bodyB.node
             }
         }
         
-        guard let hit = letterNode,
-              let bullet = bulletNode,
-              let name = hit.name,
-              hit.parent != nil else {
+        guard let hit = letterNode, let bullet = bulletNode, let name = hit.name, hit.parent != nil else {
             return
         }
         
         bullet.removeFromParent()
-        
         let letter = name.replacingOccurrences(of: "letter_", with: "").first!
         
         if let task = currentTask, task.remainingLetters.contains(letter) {
-            // BENAR
             task.fill(letter: letter)
             createExplosion(at: hit.position)
             run(explosionSound)
@@ -259,136 +382,62 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
                 gameManager.currentTaskText = "Good Job"
                 run(SKAction.sequence([
                     SKAction.wait(forDuration: 0.5),
-                    SKAction.run { [weak self] in
-                        self?.trySpawnIfClear()
-                    }
+                    SKAction.run { [weak self] in self?.trySpawnIfClear() }
                 ]))
             }
         } else {
-            // SELALU kurangi HP kalau huruf SALAH atau decoy
             run(wrongSound)
             HapticsManager.shared.trigger(.error)
             gameManager.health -= 5
-            if gameManager.health <= 0 {
-                resetGame(isGameOver: true)
-            }
+            if gameManager.health <= 0 { resetGame(isGameOver: true) }
         }
-        
-        // Decoy tetap jalan kalau salah huruf
     }
     
-    
     func trySpawnIfClear() {
-        if isResetting { return } // Stop kalau reset sedang jalan
-        
-        let stillHasObstacles = children.contains { node in
-            node.name?.hasPrefix("letter_") == true
+        if isResetting { return }
+        let stillHasObstacles = children.contains {
+            $0.name?.hasPrefix("letter_") == true
         }
-        
         if stillHasObstacles {
             run(SKAction.sequence([
                 SKAction.wait(forDuration: 0.5),
-                SKAction.run { [weak self] in
-                    self?.trySpawnIfClear()
-                }
+                SKAction.run { [weak self] in self?.trySpawnIfClear() }
             ]))
         } else {
             spawnObstacleRow()
         }
     }
     
-    
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !gameManager.isGameOver else { return }
-        if let touch = touches.first {
-            previousTouchPosition = touch.location(in: self)
-        }
-    }
-    
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !gameManager.isGameOver else { return }
-        guard let touch = touches.first,
-              let previousPosition = previousTouchPosition else { return }
-        
-        let currentPosition = touch.location(in: self)
-        let deltaX = currentPosition.x - previousPosition.x
-        
-        spaceship.position.x += deltaX
-        
-        if deltaX > 0 {
-            // Gerak ke kanan
-            spaceship.texture = spaceshipRight
-        } else if deltaX < 0 {
-            // Gerak ke kiri
-            spaceship.texture = spaceshipLeft
-        } else {
-            // Tidak bergerak, idle
-            spaceship.texture = spaceshipIdle
-        }
-        
-        // Clamp kiri-kanan
-        spaceship.position.x = max(spaceship.size.width / 2, spaceship.position.x)
-        spaceship.position.x = min(size.width - spaceship.size.width / 2, spaceship.position.x)
-        
-        previousTouchPosition = currentPosition
-    }
-    
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !gameManager.isGameOver else { return }
-        previousTouchPosition = nil
-        spaceship.texture = spaceshipIdle
-        fireBullet()
-        run(shootSound)
-        HapticsManager.shared.impact(style: .light)
-    }
-    
-    
     func spawnObstacleRow() {
-        // 🚫 Kalau task belum ada atau sudah selesai → generate kata baru
         if currentTask == nil || currentTask.isComplete {
             guard let word = wordGenerator.randomWord()?.uppercased() else {
-                print("No word found")
                 return
             }
-            
             let blanksCount = min(Int.random(in: 1...2), word.count)
-            let blankIndexes = Array(0..<word.count).shuffled().prefix(blanksCount)
+            let blankIndexes = Array(0..<word.count).shuffled().prefix(
+                blanksCount
+            )
             currentTask = WordTask(word: word, blanks: Array(blankIndexes))
-            
-            print("New Word: \(currentTask.word), blanks at: \(currentTask.blankIndexes)")
         }
         
-        // 🚫 Batasi obstacles target max 4 huruf (biar decoy max 5 total)
         var obstacles = Array(currentTask.remainingLetters.prefix(4))
         let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        
-        // Tambahkan decoy agar total pasti 5
         while obstacles.count < 5 {
             let random = letters.randomElement()!
-            if !obstacles.contains(random) {
-                obstacles.append(random)
-            }
+            if !obstacles.contains(random) { obstacles.append(random) }
         }
-        
         obstacles.shuffle()
         
-        let totalObstacles = obstacles.count
-        let spacing = size.width / CGFloat(totalObstacles + 1)
+        let spacing = size.width / CGFloat(obstacles.count + 1)
         let yStart = size.height + 40
-        
-        // Hitung pengurang dari score
         let speedUpFactor = floor(Double(gameManager.score / 100) * 0.5)
-        
-        // Hitung durasi final, clamp ke minimum misalnya 3 detik
         obstacleSpeed = max(4.0, obstacleSpeed - speedUpFactor)
         
         for (i, letter) in obstacles.enumerated() {
             let randNumber = Int.random(in: 1...3)
-            
-            // 🔡 Buat huruf retro
             let letterNode = SKLabelNode(text: String(letter))
             letterNode.fontSize = 32
-            letterNode.fontColor = .green // atau .white
+            letterNode.fontColor = .green
             letterNode.fontName = "Courier-Bold"
             letterNode.horizontalAlignmentMode = .center
             letterNode.verticalAlignmentMode = .center
@@ -401,46 +450,41 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             obstacle.addChild(boxNode)
             obstacle.addChild(letterNode)
             
-            letterNode.position = .zero
-            boxNode.position = .zero
-            
             let xPos = spacing * CGFloat(i + 1)
             obstacle.position = CGPoint(x: xPos, y: yStart)
-            
             addChild(obstacle)
             
-            // ⚡️ Durasi gerak dipercepat agar Node nggak numpuk
-            let moveDown = SKAction.moveBy(x: 0, y: -size.height - 80, duration: obstacleSpeed)
-            
+            let moveDown = SKAction.moveBy(
+                x: 0,
+                y: -size.height - 80,
+                duration: obstacleSpeed
+            )
             let check = SKAction.run { [weak self] in
                 guard let self = self else { return }
                 if let task = self.currentTask, !task.isComplete, !self.isResetting {
-                    print("⚠️ Belum selesai, RESET")
                     self.isResetting = true
                     self.resetGame()
                 }
             }
-            
             let remove = SKAction.removeFromParent()
             obstacle.run(SKAction.sequence([moveDown, check, remove]))
             setupObstaclePhysics(obstacle)
         }
-        
-        // 📝 Update overlay kata
         gameManager.currentTaskText = currentTask.display
-        print("Overlay: \(currentTask.display)")
     }
-    
     
     func fireBullet() {
         let bullet = SKSpriteNode(imageNamed: "bullet")
         bullet.size = CGSize(width: 10, height: 10)
-        bullet.position = CGPoint(x: spaceship.position.x, y: spaceship.position.y + spaceship.size.height / 2 + 10)
+        bullet.position = CGPoint(
+            x: spaceship.position.x,
+            y: spaceship.position.y + spaceship.size.height / 2 + 10
+        )
         bullet.name = "bullet"
         
         bullet.physicsBody = SKPhysicsBody(circleOfRadius: 5)
-        bullet.physicsBody?.categoryBitMask = 0x1 << 0 // kategori peluru
-        bullet.physicsBody?.contactTestBitMask = 0x1 << 1 // bisa kontak dengan obstacle
+        bullet.physicsBody?.categoryBitMask = 0x1 << 0
+        bullet.physicsBody?.contactTestBitMask = 0x1 << 1
         bullet.physicsBody?.collisionBitMask = 0
         bullet.physicsBody?.velocity = CGVector(dx: 0, dy: 400)
         bullet.physicsBody?.affectedByGravity = false
@@ -449,9 +493,13 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func setupObstaclePhysics(_ obstacle: SKNode) {
-        obstacle.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 50, height: 50))
-        obstacle.physicsBody?.categoryBitMask = 0x1 << 1 // obstacle = kategori 1
-        obstacle.physicsBody?.contactTestBitMask = (0x1 << 0) | (0x1 << 2) | (0x1 << 3) // bullet, spaceship, floor
+        obstacle.physicsBody = SKPhysicsBody(
+            rectangleOf: CGSize(width: 50, height: 50)
+        )
+        obstacle.physicsBody?.categoryBitMask = 0x1 << 1
+        obstacle.physicsBody?.contactTestBitMask = (0x1 << 0) | (0x1 << 2) | (
+            0x1 << 3
+        )
         obstacle.physicsBody?.collisionBitMask = 0
         obstacle.physicsBody?.affectedByGravity = false
     }
@@ -460,16 +508,14 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         if let explosion = SKEmitterNode(fileNamed: "Explosion.sks") {
             explosion.position = position
             addChild(explosion)
-            
-            // Hapus node setelah efek selesai
             run(SKAction.sequence([
                 SKAction.wait(forDuration: 0.5),
                 SKAction.run { explosion.removeFromParent() }
             ]))
         }
     }
+    
     func startNewGame() {
-        // Bersihkan obstacles
         for child in children {
             if child.name?.hasPrefix("letter_") == true {
                 child.removeAllActions()
@@ -483,7 +529,6 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         gameManager.health = 100
         gameManager.isGameOver = false
         isResetting = false
-        
         currentTask = nil
         spawnObstacleRow()
     }
@@ -492,15 +537,9 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         guard !isResetting else { return }
         isResetting = true
         
-        if isGameOver {
-            gameManager.isGameOver = true
-            gameManager.currentTaskText = "Game Over!"
-        } else {
-            gameManager.isGameOver = false
-            gameManager.currentTaskText = ""
-        }
+        self.gameManager.isGameOver = isGameOver
+        gameManager.currentTaskText = isGameOver ? "Game Over!" : ""
         
-        // Bersihkan obstacles
         for child in children {
             if child.name?.hasPrefix("letter_") == true {
                 child.removeAllActions()
@@ -509,21 +548,20 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         }
         
         if isGameOver {
-            // Kalau game over → tunggu sebentar, baru restart total
-            NotificationCenter.default.post(name: .didFITBGameOver, object: self)
+            NotificationCenter.default.post(
+                name: .didFITBGameOver,
+                object: self
+            )
             run(SKAction.sequence([
                 SKAction.wait(forDuration: 2.0),
                 SKAction.run { [weak self] in
                     guard let self = self else { return }
                     stopBGM()
                     self.gameManager.health = 100
-                    //                    self.gameManager.isGameOver = false
                     self.isResetting = false
-                    //                    self.spawnObstacleRow()
                 }
             ]))
         } else {
-            // Kalau reset biasa → spawn lagi cepat
             gameManager.score = 0
             score = 0
             gameManager.health = 100
@@ -537,45 +575,30 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
-    func stopBGM() {
-        backgroundMusic?.run(SKAction.stop())
-    }
+    func stopBGM() { backgroundMusic?.run(SKAction.stop()) }
+    func playBGM() { backgroundMusic?.run(SKAction.play()) }
     
-    func playBGM() {
-        backgroundMusic?.run(SKAction.play())
-    }
-    
-    func checkAchievementsAndSubmitScore(for manager: GameKitManager, finalScore: Int) {
+    func checkAchievementsAndSubmitScore(
+        for manager: GameKitManager,
+        finalScore: Int
+    ) {
         manager.submitScore(finalScore, to: "wordinvaders_fitb_leaderboard")
-        
         if finalScore >= 100 {
             manager.reportAchievement(identifier: "achievement_score_100")
         }
         if finalScore >= 1000 {
             manager.reportAchievement(identifier: "achievement_legendary_score")
         }
-        
         if finalScore > self.personalHighScore {
             self.personalHighScore = finalScore
             manager.reportAchievement(identifier: "achievement_personal_best")
             onNewHighScore?()
             saveHighScoreToDevice()
-            print("New personal high score: \(finalScore)")
         }
     }
     
     private func saveHighScoreToDevice() {
-        UserDefaults.standard.set(self.personalHighScore, forKey: "personalHighScore_STL")
-    }
-    
-    func randomMotivation() -> String {
-        let messages = [
-            "Keep practicing and beat your high score!",
-            "You got this, Captain!",
-            "Never give up, pilot! Try again!",
-            "Your spaceship needs you!",
-            "One more try! Show them who's boss!"
-        ]
-        return messages.randomElement() ?? ""
+        UserDefaults.standard
+            .set(self.personalHighScore, forKey: "personalHighScore_STL")
     }
 }

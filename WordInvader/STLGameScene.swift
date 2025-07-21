@@ -10,17 +10,17 @@ import GameplayKit
 
 enum PhysicsCategory: UInt32 {
     case none     = 0
-    case player   = 0b1      // 1
-    case bullet   = 0b10     // 2
-    case obstacle = 0b100    // 4
+    case player   = 0b1
+    case bullet   = 0b10
+    case obstacle = 0b100
 }
 
 class STLGameScene: SKScene, SKPhysicsContactDelegate {
     
     var gameState: STLGameState?
     private var player: SKSpriteNode!
-    private var lastTouchLocation: CGPoint?
     var previousTouchPosition: CGPoint?
+    private var windAnimation: SKAction?
     
     let shootSound = SKAction.playSoundFileNamed("shoot.mp3", waitForCompletion: false)
     let explosionSound = SKAction.playSoundFileNamed("explosion.mp3", waitForCompletion: false)
@@ -31,7 +31,6 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
     let spaceshipRight = SKTexture(imageNamed: "spaceship_right")
     
     var obstacleSpeed: CGFloat = 8
-    
     private var backgroundMusic: SKAudioNode?
     
     override func didMove(to view: SKView) {
@@ -39,8 +38,8 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         physicsWorld.gravity = CGVector(dx: 0, dy: 0)
         physicsWorld.contactDelegate = self
         
+        setupWindAnimation()
         setupParallaxBackground()
-        
         setupPlayer()
         setupAudio()
     }
@@ -49,35 +48,109 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         guard let gameState = gameState, !gameState.isGameOver else { return }
         
         if gameState.isWordOnScreen && !children.contains(where: { $0.name == "obstacle" }) {
-            print("Word missed! Skipping to the next one.")
             gameState.skipToNextWord()
         }
         
-        moveBackgroundNode(layerName: "starfield", speed: 0.2)
-        moveBackgroundNode(layerName: "parallax_layer_1", speed: 0.5)
-        moveBackgroundNode(layerName: "parallax_layer_2", speed: 1.0)
-        moveBackgroundNode(layerName: "parallax_layer_3", speed: 2.5)
+        moveBackgroundStrip(speed: 0.6)
+    }
+    
+    private func setupWindAnimation() {
+        var windTextures: [SKTexture] = []
+        for i in 1...4 {
+            windTextures.append(SKTexture(imageNamed: "spaceship_wind_\(i)"))
+        }
+        windAnimation = SKAction.repeatForever(
+            SKAction.animate(with: windTextures, timePerFrame: 0.1)
+        )
+    }
+    
+    private func setupParallaxBackground() {
+        for i in 0...1 {
+            let strip = createCompleteParallaxStrip()
+            strip.position = CGPoint(x: 0, y: self.size.height * CGFloat(i))
+            strip.name = "parallax_strip"
+            addChild(strip)
+        }
+    }
+    
+    private func createCompleteParallaxStrip() -> SKNode {
+        let container = SKNode()
+        
+        var occupiedFrames = [CGRect]()
+        
+        placeAssets(on: container, textureNames: ["galaxy"], count: 2, zPosition: -9, occupiedFrames: &occupiedFrames)
+        
+        placeAssets(on: container, textureNames: ["cloud_1", "cloud_2", "cloud_3"], count: 4, zPosition: -8, occupiedFrames: &occupiedFrames)
+        
+        placeAssets(on: container, textureNames: ["cloud_4", "cloud_5", "cloud_6"], count: 4, zPosition: -8, occupiedFrames: &occupiedFrames)
+        
+        placeStars(on: container, count: 50, zPosition: -7)
+        
+        return container
+    }
+    
+    private func placeStars(on container: SKNode, count: Int, zPosition: CGFloat) {
+        for _ in 0..<count {
+            let starNumber = Int.random(in: 1...5)
+            let star = SKSpriteNode(imageNamed: "star_\(starNumber)")
+            
+            star.position = CGPoint(x: .random(in: 0...self.size.width), y: .random(in: 0...self.size.height))
+            
+            star.setScale(.random(in: 0.05...0.2))
+            
+            star.alpha = .random(in: 0.4...1.0)
+            star.zPosition = zPosition
+            container.addChild(star)
+        }
+    }
+    
+    private func placeAssets(on container: SKNode, textureNames: [String], count: Int, zPosition: CGFloat, occupiedFrames: inout [CGRect]) {
+        for _ in 0..<count {
+            let textureName = textureNames.randomElement()!
+            let node = SKSpriteNode(imageNamed: textureName)
+            
+            let aspectRatio = node.texture!.size().height / node.texture!.size().width
+            let nodeWidth = self.size.width * CGFloat.random(in: 0.25...0.50)
+            node.size = CGSize(width: nodeWidth, height: nodeWidth * aspectRatio)
+            
+            var attempts = 0
+            var positionIsSafe = false
+            
+            while !positionIsSafe && attempts < 20 {
+                let xPos = CGFloat.random(in: 0...self.size.width)
+                let yPos = CGFloat.random(in: 0...self.size.height)
+                node.position = CGPoint(x: xPos, y: yPos)
+                
+                let nodeFrameWithPadding = node.frame.insetBy(dx: -20, dy: -20)
+                positionIsSafe = !occupiedFrames.contains { $0.intersects(nodeFrameWithPadding) }
+                attempts += 1
+            }
+            
+            if positionIsSafe {
+                occupiedFrames.append(node.frame)
+                node.zPosition = zPosition
+                container.addChild(node)
+            }
+        }
+    }
+    
+    private func moveBackgroundStrip(speed: CGFloat) {
+        self.enumerateChildNodes(withName: "parallax_strip") { (node, stop) in
+            node.position.y -= speed
+            if node.position.y < -self.size.height {
+                node.position.y += self.size.height * 2
+            }
+        }
     }
     
     private func setupAudio() {
         if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
             backgroundMusic = SKAudioNode(url: musicURL)
-            if let backgroundMusic = backgroundMusic {
-                backgroundMusic.autoplayLooped = true
-                addChild(backgroundMusic)
+            if let bgm = backgroundMusic {
+                bgm.autoplayLooped = true
+                addChild(bgm)
             }
         }
-    }
-    
-    func cleanupScene() {
-        print("Cleaning up the scene.")
-        
-        backgroundMusic?.run(SKAction.stop())
-        backgroundMusic?.removeFromParent()
-        backgroundMusic = nil
-        
-        self.removeAllActions()
-        self.removeAllChildren()
     }
     
     private func setupPlayer() {
@@ -85,19 +158,35 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         player.size = CGSize(width: 60, height: 70)
         player.position = CGPoint(x: size.width / 2, y: 100)
         player.name = "player"
+        player.zPosition = 10
         
+        let windNode = SKSpriteNode(texture: SKTexture(imageNamed: "spaceship_wind_1"))
+        windNode.size = CGSize(width: 70, height: 75)
+        windNode.position = CGPoint(x: 0, y: 3)
+        windNode.zPosition = -1
+        windNode.alpha = 0.35
+        if let windAnimation = self.windAnimation {
+            windNode.run(windAnimation)
+        }
+        
+        player.addChild(windNode)
         player.physicsBody = SKPhysicsBody(rectangleOf: player.size)
         player.physicsBody?.isDynamic = false
         player.physicsBody?.categoryBitMask = PhysicsCategory.player.rawValue
         player.physicsBody?.contactTestBitMask = PhysicsCategory.obstacle.rawValue
         player.physicsBody?.collisionBitMask = PhysicsCategory.none.rawValue
-        
         addChild(player)
     }
     
-    func spawnNextWord() {
-        spawnWordRow()
+    func cleanupScene() {
+        backgroundMusic?.run(SKAction.stop())
+        backgroundMusic?.removeFromParent()
+        backgroundMusic = nil
+        self.removeAllActions()
+        self.removeAllChildren()
     }
+    
+    func spawnNextWord() { spawnWordRow() }
     
     private func spawnWordRow() {
         guard let gameState = gameState, !gameState.isGameOver else { return }
@@ -137,7 +226,6 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         let moveAction = SKAction.moveTo(y: -50, duration: duration)
         let removeAction = SKAction.removeFromParent()
         box.run(SKAction.sequence([moveAction, removeAction]))
-        
         addChild(box)
     }
     
@@ -160,7 +248,6 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         bullet.run(SKAction.sequence([moveAction, removeAction]))
         
         addChild(bullet)
-        
         run(shootSound)
         HapticsManager.shared.impact(style: .light)
     }
@@ -172,43 +259,50 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first,
-              let previousPosition = previousTouchPosition else { return }
+        guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
         player.position.x = location.x
         
-        let deltaX = location.x - previousPosition.x
+        let halfPlayerWidth = player.size.width / 2
+        player.position.x = max(halfPlayerWidth, player.position.x)
+        player.position.x = min(self.size.width - halfPlayerWidth, player.position.x)
         
-        if deltaX > 0 {
-            player.texture = spaceshipRight
-        } else if deltaX < 0 {
-            player.texture = spaceshipLeft
-        } else {
-            player.texture = spaceshipIdle
+        if let previousPos = previousTouchPosition {
+            let deltaX = location.x - previousPos.x
+            if deltaX > 1 { // Beri sedikit threshold
+                player.texture = spaceshipRight
+            } else if deltaX < -1 {
+                player.texture = spaceshipLeft
+            } else {
+                player.texture = spaceshipIdle
+            }
         }
+        previousTouchPosition = location
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        previousTouchPosition = nil
         player.texture = spaceshipIdle
-        shoot()
+        if let startPos = previousTouchPosition, let endPos = touches.first?.location(in: self) {
+            let distance = hypot(endPos.x - startPos.x, endPos.y - startPos.y)
+            if distance < 10 {
+                shoot()
+            }
+        }
+        previousTouchPosition = nil
     }
     
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        shoot()
+        previousTouchPosition = nil
+        player.texture = spaceshipIdle
     }
     
     func didBegin(_ contact: SKPhysicsContact) {
-        var firstBody: SKPhysicsBody
-        var secondBody: SKPhysicsBody
-        
+        var firstBody: SKPhysicsBody, secondBody: SKPhysicsBody
         if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask {
-            firstBody = contact.bodyA
-            secondBody = contact.bodyB
+            firstBody = contact.bodyA; secondBody = contact.bodyB
         } else {
-            firstBody = contact.bodyB
-            secondBody = contact.bodyA
+            firstBody = contact.bodyB; secondBody = contact.bodyA
         }
         
         if firstBody.categoryBitMask == PhysicsCategory.bullet.rawValue && secondBody.categoryBitMask == PhysicsCategory.obstacle.rawValue {
@@ -227,24 +321,18 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
     private func createExplosion(at position: CGPoint) {
         if let emitter = SKEmitterNode(fileNamed: "Explosion.sks") {
             emitter.position = position
-            
-            let maxLifetime = emitter.particleLifetime + (emitter.particleLifetimeRange / 2)
-            let wait = SKAction.wait(forDuration: TimeInterval(maxLifetime))
-            let remove = SKAction.removeFromParent()
-            
             addChild(emitter)
-            emitter.run(SKAction.sequence([wait, remove]))
+            let wait = SKAction.wait(forDuration: TimeInterval(emitter.particleLifetime + emitter.particleLifetimeRange / 2))
+            emitter.run(SKAction.sequence([wait, .removeFromParent()]))
         }
     }
     
     private func bulletDidHitObstacle(bullet: SKNode, obstacle: SKNode) {
-        guard let gameState = gameState, !gameState.isGameOver else { return }
-        guard let letterInBox = obstacle.userData?["letter"] as? Character else { return }
+        guard let gameState = gameState, !gameState.isGameOver, let letterInBox = obstacle.userData?["letter"] as? Character else { return }
         
         let targetLetterIndex = gameState.currentLetterIndex
         guard targetLetterIndex < gameState.currentWord.count else {
-            bullet.removeFromParent()
-            return
+            bullet.removeFromParent(); return
         }
         let targetLetter = Array(gameState.currentWord)[targetLetterIndex]
         
@@ -262,9 +350,9 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             run(wrongSound)
             
             let shake = SKAction.sequence([
-                SKAction.moveBy(x: 10, y: 0, duration: 0.05),
-                SKAction.moveBy(x: -20, y: 0, duration: 0.1),
-                SKAction.moveBy(x: 10, y: 0, duration: 0.05)
+                .moveBy(x: 10, y: 0, duration: 0.05),
+                .moveBy(x: -20, y: 0, duration: 0.1),
+                .moveBy(x: 10, y: 0, duration: 0.05)
             ])
             obstacle.run(shake)
         }
@@ -273,85 +361,14 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
     private func playerDidHitObstacle(obstacle: SKNode) {
         guard let gameState = gameState, !gameState.isGameOver else { return }
         
-        let obstacleYPosition = obstacle.position.y
-        self.children.filter { $0.name == "obstacle" && abs($0.position.y - obstacleYPosition) < 1 }.forEach { node in
+        let yPos = obstacle.position.y
+        self.children.filter { $0.name == "obstacle" && abs($0.position.y - yPos) < 1 }.forEach { node in
             createExplosion(at: node.position)
             node.removeFromParent()
         }
         
         gameState.skipToNextWord()
-        
         HapticsManager.shared.trigger(.error)
         run(explosionSound)
     }
-    
-    private func setupParallaxBackground() {
-        setupStarfield()
-        createScrollingLayer(textureName: "Galaxt", name: "parallax_layer_1", zPosition: -10, density: 3)
-        createScrollingLayer(textureName: "dc3", name: "parallax_layer_2", zPosition: -9, density: 4)
-        createScrollingLayer(textureName: "Light cloud", name: "parallax_layer_3", zPosition: -8, density: 5)
-    }
-    
-    private func setupStarfield() {
-        for _ in 0..<50 {
-            let starNumber = Int.random(in: 1...5)
-            let starTexture = SKTexture(imageNamed: "star\(starNumber)")
-            let star = SKSpriteNode(texture: starTexture)
-            
-            let randomX = CGFloat.random(in: 0...self.size.width)
-            let randomY = CGFloat.random(in: 0...self.size.height * 2)
-            star.position = CGPoint(x: randomX, y: randomY)
-            
-            let randomScale = CGFloat.random(in: 0.1...0.5)
-            star.setScale(randomScale)
-            
-            star.zPosition = -11
-            star.name = "starfield"
-            
-            addChild(star)
-        }
-    }
-    
-    private func createScrollingLayer(textureName: String, name: String, zPosition: CGFloat, density: Int) {
-        let texture = SKTexture(imageNamed: textureName)
-        
-        let numberOfColumns = 3
-        let columnWidth = self.size.width / CGFloat(numberOfColumns)
-        
-        for i in 0..<density {
-            let node = SKSpriteNode(texture: texture)
-            
-            let columnIndex = i % numberOfColumns
-            
-            let jitter = CGFloat.random(in: -columnWidth/4 ... columnWidth/4)
-            let xPos = (CGFloat(columnIndex) * columnWidth) + (columnWidth / 2) + jitter
-            
-            let yPos = (self.size.height / CGFloat(density)) * CGFloat(i) + node.size.height
-            
-            node.position = CGPoint(x: xPos, y: yPos)
-            
-            let baseSize = CGSize(width: 250, height: 250)
-            node.size = baseSize
-            
-            let randomScale = CGFloat.random(in: 0.5...1.0)
-            node.setScale(randomScale)
-            
-            node.zPosition = zPosition
-            node.name = name
-            addChild(node)
-        }
-    }
-    
-    private func moveBackgroundNode(layerName: String, speed: CGFloat) {
-        self.enumerateChildNodes(withName: layerName) { (node, stop) in
-            node.position.y -= speed
-            
-            if node.position.y < -node.frame.size.height {
-                let randomX = CGFloat.random(in: 0...self.size.width)
-                node.position.y += self.size.height * 2 + node.frame.size.height
-                node.position.x = randomX
-            }
-        }
-    }
-    
 }
