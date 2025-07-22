@@ -12,7 +12,7 @@ import SwiftData
 struct WordInvaderApp: App {
     var body: some Scene {
         WindowGroup {
-            STLGameLayout()
+            FITBGameView()
         }
         .modelContainer(for: [Word.self, GameSession.self])
     }
