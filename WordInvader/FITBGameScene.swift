@@ -17,10 +17,11 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     var spaceship: SKSpriteNode!
     var previousTouchPosition: CGPoint?
     
-    let wordGenerator = WordGenerator()
+    var wordDataManager : WordDataManager! = nil
     let gameManager = GameManager.shared
     
     var currentTask: WordTask!
+    var currentGameSession: GameSession!
     var score : Int = 0
     
     var isResetting = false
@@ -52,6 +53,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     var backgroundMusic: SKAudioNode?
     
     private var windAnimation: SKAction?
+    var isCountingDown = false
     
     override func didMove(to view: SKView) {
         if let musicURL = Bundle.main.url(
@@ -65,7 +67,16 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
         
+
         setupWindAnimation()
+        currentGameSession = GameSession()
+        
+        let background = SKSpriteNode(imageNamed: "background")
+        background.position = CGPoint(x: size.width/2, y: size.height/2)
+        background.zPosition = -1  // Pastikan di belakang semua node
+        background.size = size     // Atur agar full screen
+        
+        addChild(background)
         
         setupParallaxBackground()
         setupSpaceship()
@@ -86,6 +97,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         spawnObstacleRow()
     }
     
+
     override func update(_ currentTime: TimeInterval) {
         moveBackgroundStrip(speed: 0.6)
     }
@@ -233,54 +245,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !gameManager.isGameOver else { return }
-        if let touch = touches.first {
-            previousTouchPosition = touch.location(in: self)
-        }
-    }
     
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !gameManager.isGameOver else { return }
-        guard let touch = touches.first else { return }
-        let currentPosition = touch.location(in: self)
-        
-        spaceship.position.x = currentPosition.x
-        
-        let halfPlayerWidth = spaceship.size.width / 2
-        spaceship.position.x = max(halfPlayerWidth, spaceship.position.x)
-        spaceship.position.x = min(
-            size.width - halfPlayerWidth,
-            spaceship.position.x
-        )
-        
-        if let previousPos = previousTouchPosition {
-            let deltaX = currentPosition.x - previousPos.x
-            if deltaX > 1 {
-                spaceship.texture = spaceshipRight
-            } else if deltaX < -1 {
-                spaceship.texture = spaceshipLeft
-            } else {
-                spaceship.texture = spaceshipIdle
-            }
-        }
-        previousTouchPosition = currentPosition
-    }
-    
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !gameManager.isGameOver else { return }
-        spaceship.texture = spaceshipIdle
-        
-        if let startPos = previousTouchPosition, let endPos = touches.first?.location(
-            in: self
-        ) {
-            let distance = hypot(endPos.x - startPos.x, endPos.y - startPos.y)
-            if distance < 10 {
-                fireBullet()
-            }
-        }
-        previousTouchPosition = nil
-    }
     
     override func touchesCancelled(
         _ touches: Set<UITouch>,
@@ -288,6 +253,10 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     ) {
         previousTouchPosition = nil
         spaceship.texture = spaceshipIdle
+
+    func configure(with wordDataManager: WordDataManager) {
+        self.wordDataManager = wordDataManager
+
     }
     
     func didBegin(_ contact: SKPhysicsContact) {
@@ -313,6 +282,9 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             
             if let hit = letterNode { hit.removeFromParent() }
             
+
+            // Kalo node kelewat minus hp
+
             if let task = currentTask, !task.isComplete {
                 gameManager.health -= 10
                 if gameManager.health <= 0 {
@@ -376,10 +348,20 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             gameManager.currentTaskText = task.display
             
             if task.isComplete {
+                // Mark word as used in SwiftData
+                wordDataManager.markWordAsUsed(task.word)
+                
+                // Update both game session and game manager
                 gameManager.score += 50
                 score += 50
+                currentGameSession.score += 50
+                currentGameSession.wordsCompleted += 1
+                
                 currentTask = nil
                 gameManager.currentTaskText = "Good Job"
+                
+                removeRemainingLettersWithExplosions()
+                
                 run(SKAction.sequence([
                     SKAction.wait(forDuration: 0.5),
                     SKAction.run { [weak self] in self?.trySpawnIfClear() }
@@ -393,6 +375,28 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
+
+    func removeRemainingLettersWithExplosions() {
+        let letterNodes = children.filter { node in
+            node.name?.hasPrefix("letter_") == true
+        }
+        
+        for (index, letterNode) in letterNodes.enumerated() {
+            // Stagger the explosions slightly for visual effect
+            let delay = Double(index) * 0.1
+            
+            run(SKAction.sequence([
+                SKAction.wait(forDuration: delay),
+                SKAction.run { [weak self] in
+                    guard let self = self else { return }
+                    self.createExplosion(at: letterNode.position)
+                    self.run(self.explosionSound)
+                    letterNode.removeFromParent()
+                }
+            ]))
+        }
+    }
+
     func trySpawnIfClear() {
         if isResetting { return }
         let stillHasObstacles = children.contains {
@@ -408,20 +412,69 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !gameManager.isGameOver && !isPaused && !isCountingDown else { return }
+        if let touch = touches.first {
+            previousTouchPosition = touch.location(in: self)
+        }
+    }
+    
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !gameManager.isGameOver && !isPaused && !isCountingDown else { return }
+        guard let touch = touches.first,
+              let previousPosition = previousTouchPosition else { return }
+        
+        let currentPosition = touch.location(in: self)
+        let deltaX = currentPosition.x - previousPosition.x
+        
+        spaceship.position.x += deltaX
+        
+        if deltaX > 0 {
+            spaceship.texture = spaceshipRight
+        } else if deltaX < 0 {
+            spaceship.texture = spaceshipLeft
+        } else {
+            spaceship.texture = spaceshipIdle
+        }
+        
+        spaceship.position.x = max(spaceship.size.width / 2, spaceship.position.x)
+        spaceship.position.x = min(size.width - spaceship.size.width / 2, spaceship.position.x)
+        
+        previousTouchPosition = currentPosition
+    }
+
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !gameManager.isGameOver && !isPaused && !isCountingDown else { return }
+        previousTouchPosition = nil
+        spaceship.texture = spaceshipIdle
+        fireBullet()
+        run(shootSound)
+        HapticsManager.shared.impact(style: .light)
+    }
+    
+    
     func spawnObstacleRow() {
+        // Generate new word task using SwiftData
         if currentTask == nil || currentTask.isComplete {
-            guard let word = wordGenerator.randomWord()?.uppercased() else {
+            guard let word = wordDataManager.getRandomWord() else {
+                // Reset word usage if no words available
+                wordDataManager.resetWordUsage()
+                guard let resetWord = wordDataManager.getRandomWord() else {
+                    print("No words found even after reset")
+                    return
+                }
+                createNewTask(with: resetWord)
                 return
             }
-            let blanksCount = min(Int.random(in: 1...2), word.count)
-            let blankIndexes = Array(0..<word.count).shuffled().prefix(
-                blanksCount
-            )
-            currentTask = WordTask(word: word, blanks: Array(blankIndexes))
+            
+            createNewTask(with: word)
         }
         
         var obstacles = Array(currentTask.remainingLetters.prefix(4))
         let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
         while obstacles.count < 5 {
             let random = letters.randomElement()!
             if !obstacles.contains(random) { obstacles.append(random) }
@@ -473,6 +526,17 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         gameManager.currentTaskText = currentTask.display
     }
     
+
+    private func createNewTask(with word: Word) {
+        let wordText = word.text.uppercased()
+        let blanksCount = min(Int.random(in: 1...2), wordText.count)
+        let blankIndexes = Array(0..<wordText.count).shuffled().prefix(blanksCount)
+        currentTask = WordTask(word: word, blanks: Array(blankIndexes))
+        
+        print("New Word: \(currentTask.word.text), blanks at: \(currentTask.blankIndexes)")
+    }
+    
+    
     func fireBullet() {
         let bullet = SKSpriteNode(imageNamed: "bullet")
         bullet.size = CGSize(width: 10, height: 10)
@@ -516,12 +580,16 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func startNewGame() {
+
+        // Clear obstacles
+
         for child in children {
             if child.name?.hasPrefix("letter_") == true {
                 child.removeAllActions()
                 child.removeFromParent()
             }
         }
+        
         playBGM()
         obstacleSpeed = 8
         gameManager.score = 0
@@ -529,6 +597,10 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         gameManager.health = 100
         gameManager.isGameOver = false
         isResetting = false
+
+        // Create new game session
+        currentGameSession = GameSession()
+
         currentTask = nil
         spawnObstacleRow()
     }
@@ -537,8 +609,22 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         guard !isResetting else { return }
         isResetting = true
         
-        self.gameManager.isGameOver = isGameOver
-        gameManager.currentTaskText = isGameOver ? "Game Over!" : ""
+
+        if isGameOver {
+            // Save game session to SwiftData
+            currentGameSession.duration = Date().timeIntervalSince(currentGameSession.dateStarted)
+            wordDataManager.saveGameSession(currentGameSession)
+            
+            gameManager.isGameOver = true
+            gameManager.currentTaskText = "Game Over!"
+            
+            // Show stats
+            let stats = wordDataManager.getGameStats()
+            print("Game Stats - Total Games: \(stats.totalGames), Best Score: \(stats.bestScore), Average: \(stats.averageScore)")
+        } else {
+            gameManager.isGameOver = false
+            gameManager.currentTaskText = ""
+        }
         
         for child in children {
             if child.name?.hasPrefix("letter_") == true {
@@ -548,10 +634,12 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         }
         
         if isGameOver {
+
             NotificationCenter.default.post(
                 name: .didFITBGameOver,
                 object: self
             )
+
             run(SKAction.sequence([
                 SKAction.wait(forDuration: 2.0),
                 SKAction.run { [weak self] in
@@ -562,6 +650,8 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
                 }
             ]))
         } else {
+            // Reset for new game
+
             gameManager.score = 0
             score = 0
             gameManager.health = 100
@@ -578,27 +668,180 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     func stopBGM() { backgroundMusic?.run(SKAction.stop()) }
     func playBGM() { backgroundMusic?.run(SKAction.play()) }
     
-    func checkAchievementsAndSubmitScore(
-        for manager: GameKitManager,
-        finalScore: Int
-    ) {
-        manager.submitScore(finalScore, to: "wordinvaders_fitb_leaderboard")
+
+    func checkAchievementsAndSubmitScore(for manager: GameKitManager, finalScore: Int) {
+        manager.submitScore(finalScore, to: "fill_in_the_blank_leaderboard")
+        
         if finalScore >= 100 {
-            manager.reportAchievement(identifier: "achievement_score_100")
+            manager.reportAchievement(identifier: "100_score_fill_in_the_blank")
         }
         if finalScore >= 1000 {
-            manager.reportAchievement(identifier: "achievement_legendary_score")
+            manager.reportAchievement(identifier: "1000_score_fill_in_the_blank")
         }
         if finalScore > self.personalHighScore {
             self.personalHighScore = finalScore
-            manager.reportAchievement(identifier: "achievement_personal_best")
+            manager.reportAchievement(identifier: "new_personal_record_fill_in_the_blank")
             onNewHighScore?()
             saveHighScoreToDevice()
         }
     }
     
     private func saveHighScoreToDevice() {
-        UserDefaults.standard
-            .set(self.personalHighScore, forKey: "personalHighScore_STL")
+        UserDefaults.standard.set(self.personalHighScore, forKey: "personalHighScore_FITB")
+    }
+    
+    func randomMotivation() -> String {
+        let messages = [
+            "Keep practicing and beat your high score!",
+            "You got this, Captain!",
+            "Never give up, pilot! Try again!",
+            "Your spaceship needs you!",
+            "One more try! Show them who's boss!"
+        ]
+        return messages.randomElement() ?? ""
+    }
+    
+    // Add these methods to your FITBGameScene class
+    
+    func pauseGame() {
+        // Jangan pause kalau sedang countdown
+        if isCountingDown { return }
+        
+        isPaused = true
+        // Pause all actions
+        for child in children {
+            child.isPaused = true
+        }
+        // Pause physics
+        physicsWorld.speed = 0
+        
+        // Tambahkan pause overlay
+        let pauseOverlay = SKSpriteNode(color: UIColor.black.withAlphaComponent(0.5), size: size)
+        pauseOverlay.position = CGPoint(x: size.width/2, y: size.height/2)
+        pauseOverlay.zPosition = 999
+        pauseOverlay.name = "pauseOverlay"
+        addChild(pauseOverlay)
+        
+        let pauseLabel = SKLabelNode(text: "PAUSED")
+        pauseLabel.fontSize = 40
+        pauseLabel.fontColor = .white
+        pauseLabel.fontName = "Courier-Bold"
+        pauseLabel.horizontalAlignmentMode = .center
+        pauseLabel.verticalAlignmentMode = .center
+        pauseLabel.position = .zero
+        pauseOverlay.addChild(pauseLabel)
+    }
+    
+    func resumeGame() {
+        startCountdown()
+    }
+    
+    private func startCountdown() {
+        removePauseOverlay()
+        
+        // Set countdown state
+        isCountingDown = true
+        
+        // PENTING: Pause physics world juga selama countdown
+        physicsWorld.speed = 0
+        
+        // Pause semua obstacle actions selama countdown
+        for child in children {
+            if child.name?.hasPrefix("letter_") == true {
+                child.isPaused = true
+            }
+        }
+        
+        // Buat countdown overlay
+        let countdownOverlay = SKSpriteNode(color: UIColor.black.withAlphaComponent(0.7), size: size)
+        countdownOverlay.position = CGPoint(x: size.width/2, y: size.height/2)
+        countdownOverlay.zPosition = 1000
+        countdownOverlay.name = "countdownOverlay"
+        addChild(countdownOverlay)
+        
+        // Buat label countdown
+        let countdownLabel = SKLabelNode(text: "3")
+        countdownLabel.fontSize = 80
+        countdownLabel.fontColor = .white
+        countdownLabel.fontName = "Courier-Bold"
+        countdownLabel.horizontalAlignmentMode = .center
+        countdownLabel.verticalAlignmentMode = .center
+        countdownLabel.position = .zero
+        countdownLabel.name = "countdownLabel"
+        countdownOverlay.addChild(countdownLabel)
+        
+        // Animasi countdown 3, 2, 1, GO!
+        let countdown3 = SKAction.run {
+            countdownLabel.text = "3"
+            countdownLabel.setScale(0.5)
+            countdownLabel.run(SKAction.scale(to: 1.0, duration: 0.3))
+        }
+        
+        let countdown2 = SKAction.run {
+            countdownLabel.text = "2"
+            countdownLabel.setScale(0.5)
+            countdownLabel.run(SKAction.scale(to: 1.0, duration: 0.3))
+        }
+        
+        let countdown1 = SKAction.run {
+            countdownLabel.text = "1"
+            countdownLabel.setScale(0.5)
+            countdownLabel.run(SKAction.scale(to: 1.0, duration: 0.3))
+        }
+        
+        let countdownGo = SKAction.run {
+            countdownLabel.text = "GO!"
+            countdownLabel.fontColor = .green
+            countdownLabel.setScale(0.5)
+            countdownLabel.run(SKAction.scale(to: 1.2, duration: 0.3))
+        }
+        
+        let actualResume = SKAction.run { [weak self] in
+            self?.performActualResume()
+        }
+        
+        let removeOverlay = SKAction.run {
+            countdownOverlay.removeFromParent()
+        }
+        
+        // Jalankan sequence countdown
+        let countdownSequence = SKAction.sequence([
+            countdown3,
+            SKAction.wait(forDuration: 1.0),
+            countdown2,
+            SKAction.wait(forDuration: 1.0),
+            countdown1,
+            SKAction.wait(forDuration: 1.0),
+            countdownGo,
+            SKAction.wait(forDuration: 0.5),
+            actualResume,
+            removeOverlay
+        ])
+        
+        run(countdownSequence)
+    }
+    
+    private func performActualResume() {
+        isCountingDown = false
+        isPaused = false
+        
+        // Resume all actions including obstacles
+        for child in children {
+            child.isPaused = false
+        }
+        // Resume physics
+        physicsWorld.speed = 1
+    }
+    
+    private func removePauseOverlay() {
+        childNode(withName: "pauseOverlay")?.removeFromParent()
+    }
+    
+    // Update your existing methods to check pause state
+    override func update(_ currentTime: TimeInterval) {
+        if isPaused { return }
+        
+        // Your existing update logic
+        // ...
     }
 }

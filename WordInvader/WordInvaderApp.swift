@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct WordInvaderApp: App {
@@ -13,5 +14,6 @@ struct WordInvaderApp: App {
         WindowGroup {
             STLGameLayout()
         }
+        .modelContainer(for: [Word.self, GameSession.self])
     }
 }
