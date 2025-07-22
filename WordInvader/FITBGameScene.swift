@@ -43,6 +43,8 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     
     var isCountingDown = false
     
+    private var windAnimation: SKAction?
+    
     override func didMove(to view: SKView) {
         // Inisialisasi BGM
         if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
@@ -60,21 +62,27 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         
         addChild(background)
         
+        setupWindAnimation()
+                
+        setupParallaxBackground()
+        
+        setupSpaceship()
+        
         // Spaceship setup...
-        spaceship = SKSpriteNode(imageNamed: "spaceship_idle")
-        spaceship.size = CGSize(width: 60, height: 70)
-        spaceship.position = CGPoint(x: size.width / 2, y: 100)
-        addChild(spaceship)
+//        spaceship = SKSpriteNode(imageNamed: "spaceship_idle")
+//        spaceship.size = CGSize(width: 60, height: 70)
+//        spaceship.position = CGPoint(x: size.width / 2, y: 100)
+//        addChild(spaceship)
         
         // 🚨 Ini WAJIB 🚨
         physicsWorld.contactDelegate = self
         
-        // physics body ke spaceship
-        spaceship.physicsBody = SKPhysicsBody(rectangleOf: spaceship.size)
-        spaceship.physicsBody?.isDynamic = false // Supaya spaceship gak kena gravity
-        spaceship.physicsBody?.categoryBitMask = 0x1 << 2 // 🚀 spaceship = kategori 2
-        spaceship.physicsBody?.contactTestBitMask = 0x1 << 1 // bisa kontak dengan obstacle
-        spaceship.physicsBody?.collisionBitMask = 0
+//        // physics body ke spaceship
+//        spaceship.physicsBody = SKPhysicsBody(rectangleOf: spaceship.size)
+//        spaceship.physicsBody?.isDynamic = false // Supaya spaceship gak kena gravity
+//        spaceship.physicsBody?.categoryBitMask = 0x1 << 2 // 🚀 spaceship = kategori 2
+//        spaceship.physicsBody?.contactTestBitMask = 0x1 << 1 // bisa kontak dengan obstacle
+//        spaceship.physicsBody?.collisionBitMask = 0
         
         let floorNode = SKNode()
         floorNode.position = CGPoint(x: size.width / 2, y: 0) // dasar screen
@@ -213,6 +221,14 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             }
         } else {
             // SELALU kurangi HP kalau huruf SALAH atau decoy
+            
+            let shake = SKAction.sequence([
+                .moveBy(x: 10, y: 0, duration: 0.05),
+                .moveBy(x: -20, y: 0, duration: 0.1),
+                .moveBy(x: 10, y: 0, duration: 0.05)
+            ])
+            hit.run(shake)
+
             run(wrongSound)
             HapticsManager.shared.trigger(.error)
             gameManager.health -= 5
@@ -222,6 +238,149 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         }
         
         // Decoy tetap jalan kalau salah huruf
+    }
+    
+    private func setupWindAnimation() {
+        var windTextures: [SKTexture] = []
+        for i in 1...4 {
+            windTextures.append(SKTexture(imageNamed: "spaceship_wind_\(i)"))
+        }
+        windAnimation = SKAction.repeatForever(
+            SKAction.animate(with: windTextures, timePerFrame: 0.1)
+        )
+    }
+    
+    private func setupSpaceship() {
+        spaceship = SKSpriteNode(imageNamed: "spaceship_idle")
+        spaceship.size = CGSize(width: 60, height: 70)
+        spaceship.position = CGPoint(x: size.width / 2, y: 100)
+        spaceship.name = "player"
+        spaceship.zPosition = 10
+        
+        let windNode = SKSpriteNode(texture: SKTexture(imageNamed: "spaceship_wind_1"))
+        windNode.size = CGSize(width: 70, height: 75)
+        windNode.position = CGPoint(x: 0, y: 3)
+        windNode.zPosition = -1
+        windNode.alpha = 0.35
+        if let windAnimation = self.windAnimation {
+            windNode.run(windAnimation)
+        }
+        
+        spaceship.addChild(windNode)
+        addChild(spaceship)
+        spaceship.physicsBody = SKPhysicsBody(rectangleOf: spaceship.size)
+        spaceship.physicsBody?.isDynamic = false
+        spaceship.physicsBody?.categoryBitMask = 0x1 << 2
+        spaceship.physicsBody?.contactTestBitMask = 0x1 << 1
+        spaceship.physicsBody?.collisionBitMask = 0
+    }
+    
+    
+    private func setupParallaxBackground() {
+        for i in 0...1 {
+            let strip = createCompleteParallaxStrip()
+            strip.position = CGPoint(x: 0, y: self.size.height * CGFloat(i))
+            strip.name = "parallax_strip"
+            addChild(strip)
+        }
+    }
+    
+    private func createCompleteParallaxStrip() -> SKNode {
+        let container = SKNode()
+        var occupiedFrames = [CGRect]()
+        
+        placeAssets(
+            on: container,
+            textureNames: ["galaxy"],
+            count: 2,
+            zPosition: -9,
+            occupiedFrames: &occupiedFrames
+        )
+        placeAssets(
+            on: container,
+            textureNames: ["cloud_1", "cloud_2", "cloud_3"],
+            count: 4,
+            zPosition: -8,
+            occupiedFrames: &occupiedFrames
+        )
+        placeAssets(
+            on: container,
+            textureNames: ["cloud_4", "cloud_5", "cloud_6"],
+            count: 4,
+            zPosition: -8,
+            occupiedFrames: &occupiedFrames
+        )
+        placeStars(on: container, count: 50, zPosition: -7)
+        
+        return container
+    }
+    
+    private func placeStars(
+        on container: SKNode,
+        count: Int,
+        zPosition: CGFloat
+    ) {
+        for _ in 0..<count {
+            let starNumber = Int.random(in: 1...5)
+            let star = SKSpriteNode(imageNamed: "star_\(starNumber)")
+            star.position = CGPoint(
+                x: .random(in: 0...self.size.width),
+                y: .random(in: 0...self.size.height)
+            )
+            star.setScale(.random(in: 0.05...0.2))
+            star.alpha = .random(in: 0.4...1.0)
+            star.zPosition = zPosition
+            container.addChild(star)
+        }
+    }
+    
+    private func placeAssets(
+        on container: SKNode,
+        textureNames: [String],
+        count: Int,
+        zPosition: CGFloat,
+        occupiedFrames: inout [CGRect]
+    ) {
+        for _ in 0..<count {
+            let textureName = textureNames.randomElement()!
+            let node = SKSpriteNode(imageNamed: textureName)
+            
+            let aspectRatio = node.texture!.size().height / node.texture!.size().width
+            let nodeWidth = self.size.width * CGFloat.random(in: 0.25...0.50)
+            node.size = CGSize(
+                width: nodeWidth,
+                height: nodeWidth * aspectRatio
+            )
+            
+            var attempts = 0
+            var positionIsSafe = false
+            
+            while !positionIsSafe && attempts < 20 {
+                let xPos = CGFloat.random(in: 0...self.size.width)
+                let yPos = CGFloat.random(in: 0...self.size.height)
+                node.position = CGPoint(x: xPos, y: yPos)
+                
+                let nodeFrameWithPadding = node.frame.insetBy(dx: -20, dy: -20)
+                positionIsSafe = !occupiedFrames
+                    .contains { $0.intersects(nodeFrameWithPadding) }
+                attempts += 1
+            }
+            
+            if positionIsSafe {
+                occupiedFrames.append(node.frame)
+                node.zPosition = zPosition
+                container.addChild(node)
+            }
+        }
+    }
+    
+    private func moveBackgroundStrip(speed: CGFloat) {
+        self.enumerateChildNodes(withName: "parallax_strip") { (node, stop) in
+            node.position.y -= speed
+            if node.position.y < -self.size.height {
+                node.position.y += self.size.height * 2
+            }
+        }
     }
     
     func removeRemainingLettersWithExplosions() {
@@ -701,6 +860,9 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     // Update your existing methods to check pause state
     override func update(_ currentTime: TimeInterval) {
         if isPaused { return }
+        
+        
+        moveBackgroundStrip(speed: 0.6)
         
         // Your existing update logic
         // ...
