@@ -20,7 +20,6 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
     var gameState: STLGameState?
     private var player: SKSpriteNode!
     var previousTouchPosition: CGPoint?
-    private var windAnimation: SKAction?
     
     let shootSound = SKAction.playSoundFileNamed("shoot.mp3", waitForCompletion: false)
     let explosionSound = SKAction.playSoundFileNamed("explosion.mp3", waitForCompletion: false)
@@ -38,8 +37,8 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         physicsWorld.gravity = CGVector(dx: 0, dy: 0)
         physicsWorld.contactDelegate = self
         
-        setupWindAnimation()
         setupParallaxBackground()
+        setupFallingWindEffect()
         setupPlayer()
         setupAudio()
     }
@@ -54,14 +53,39 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         moveBackgroundStrip(speed: 0.6)
     }
     
-    private func setupWindAnimation() {
-        var windTextures: [SKTexture] = []
-        for i in 1...4 {
-            windTextures.append(SKTexture(imageNamed: "spaceship_wind_\(i)"))
+    private func setupFallingWindEffect() {
+        let createWindParticle = SKAction.run { [weak self] in
+            self?.spawnWindParticle()
         }
-        windAnimation = SKAction.repeatForever(
-            SKAction.animate(with: windTextures, timePerFrame: 0.1)
-        )
+        let wait = SKAction.wait(forDuration: 0.08, withRange: 0.1)
+        
+        let sequence = SKAction.sequence([createWindParticle, wait])
+        let repeatForever = SKAction.repeatForever(sequence)
+        
+        run(repeatForever, withKey: "windSpawner")
+    }
+    
+    private func spawnWindParticle() {
+        let windImageNumber = Int.random(in: 1...4)
+        let windNode = SKSpriteNode(imageNamed: "spaceship_wind_\(windImageNumber)")
+        
+        let randomX = CGFloat.random(in: 0...size.width)
+        windNode.position = CGPoint(x: randomX, y: self.size.height + 100)
+        
+        windNode.size = CGSize(width: 3, height: 60)
+        
+        windNode.alpha = CGFloat.random(in: 0.2...0.5)
+        windNode.zRotation = 0
+        windNode.zPosition = 5
+        
+        let destinationY = -100.0
+        let randomDuration = TimeInterval.random(in: 2.0...3.0)
+        let moveAction = SKAction.moveTo(y: destinationY, duration: randomDuration)
+        
+        let removeAction = SKAction.removeFromParent()
+        windNode.run(SKAction.sequence([moveAction, removeAction]))
+        
+        addChild(windNode)
     }
     
     private func setupParallaxBackground() {
@@ -95,11 +119,25 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             let star = SKSpriteNode(imageNamed: "star_\(starNumber)")
             
             star.position = CGPoint(x: .random(in: 0...self.size.width), y: .random(in: 0...self.size.height))
-            
-            star.setScale(.random(in: 0.05...0.2))
-            
+            star.setScale(.random(in: 0.05...0.15))
             star.alpha = .random(in: 0.4...1.0)
             star.zPosition = zPosition
+            
+            let fadeDuration = TimeInterval.random(in: 0.4...0.8)
+            let waitDuration = TimeInterval.random(in: 1.0...1.5)
+            
+            let fadeOut = SKAction.fadeAlpha(to: .random(in: 0.1...0.4), duration: fadeDuration)
+            let waitWhileDim = SKAction.wait(forDuration: waitDuration / 2)
+            
+            let fadeIn = SKAction.fadeAlpha(to: .random(in: 0.6...0.8), duration: fadeDuration)
+            let waitWhileBright = SKAction.wait(forDuration: waitDuration)
+            
+            let sequence = SKAction.sequence([fadeOut, waitWhileDim, fadeIn, waitWhileBright])
+            
+            let twinkle = SKAction.repeatForever(sequence)
+            
+            star.run(twinkle)
+            
             container.addChild(star)
         }
     }
@@ -143,6 +181,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
+    
     private func setupAudio() {
         if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
             backgroundMusic = SKAudioNode(url: musicURL)
@@ -159,17 +198,6 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         player.position = CGPoint(x: size.width / 2, y: 100)
         player.name = "player"
         player.zPosition = 10
-        
-        let windNode = SKSpriteNode(texture: SKTexture(imageNamed: "spaceship_wind_1"))
-        windNode.size = CGSize(width: 70, height: 75)
-        windNode.position = CGPoint(x: 0, y: 3)
-        windNode.zPosition = -1
-        windNode.alpha = 0.35
-        if let windAnimation = self.windAnimation {
-            windNode.run(windAnimation)
-        }
-        
-        player.addChild(windNode)
         player.physicsBody = SKPhysicsBody(rectangleOf: player.size)
         player.physicsBody?.isDynamic = false
         player.physicsBody?.categoryBitMask = PhysicsCategory.player.rawValue
@@ -210,6 +238,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         box.size = CGSize(width: 50, height: 50)
         box.position = position
         box.name = "obstacle"
+        box.zPosition = 8
         
         let label = SKLabelNode(fontNamed: "Helvetica-Bold")
         label.text = String(letter)
@@ -236,7 +265,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         bullet.size = CGSize(width: 15, height: 25)
         bullet.position = player.position
         bullet.name = "bullet"
-        
+        bullet.zPosition = 9
         bullet.physicsBody = SKPhysicsBody(rectangleOf: bullet.size)
         bullet.physicsBody?.categoryBitMask = PhysicsCategory.bullet.rawValue
         bullet.physicsBody?.contactTestBitMask = PhysicsCategory.obstacle.rawValue
