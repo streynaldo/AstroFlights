@@ -18,12 +18,14 @@ enum PhysicsCategory: UInt32 {
 class STLGameScene: SKScene, SKPhysicsContactDelegate {
     
     var gameState: STLGameState?
+    var gameKitManager: GameKitManager?
     private var player: SKSpriteNode!
     var previousTouchPosition: CGPoint?
     
     let shootSound = SKAction.playSoundFileNamed("shoot.mp3", waitForCompletion: false)
     let explosionSound = SKAction.playSoundFileNamed("explosion.mp3", waitForCompletion: false)
     let wrongSound = SKAction.playSoundFileNamed("wrong.mp3", waitForCompletion: false)
+    let coinSound = SKAction.playSoundFileNamed("success_sound.mp3", waitForCompletion: false)
     
     let spaceshipIdle = SKTexture(imageNamed: "spaceship_idle")
     let spaceshipLeft = SKTexture(imageNamed: "spaceship_left")
@@ -33,7 +35,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
     private var backgroundMusic: SKAudioNode?
     
     override func didMove(to view: SKView) {
-        backgroundColor = .black
+        backgroundColor = SKColor(named: "background_color") ?? .black
         physicsWorld.gravity = CGVector(dx: 0, dy: 0)
         physicsWorld.contactDelegate = self
         
@@ -51,6 +53,46 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         }
         
         moveBackgroundStrip(speed: 0.6)
+    }
+    
+    func showCoinRewardEffect() {
+        let coin = SKSpriteNode(imageNamed: "coin")
+        coin.position = CGPoint(x: self.size.width / 2, y: self.size.height / 2 + 100)
+        coin.size = CGSize(width: 80, height: 80)
+        coin.zPosition = 15
+        coin.alpha = 0.0
+        coin.setScale(0.0)
+        
+        let fadeIn = SKAction.fadeIn(withDuration: 0.2)
+        let scaleUp = SKAction.scale(to: 1.2, duration: 0.3)
+        let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
+        let wait = SKAction.wait(forDuration: 0.8)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.3)
+        
+        let sequence = SKAction.sequence([.group([fadeIn, scaleUp]), scaleDown, wait, fadeOut, .removeFromParent()])
+        
+        coin.run(sequence)
+        run(coinSound)
+        addChild(coin)
+    }
+    
+    private func showBrokenHeartEffect(at position: CGPoint) {
+        let brokenHeart = SKSpriteNode(imageNamed: "broken_heart")
+        brokenHeart.position = position
+        brokenHeart.size = CGSize(width: 60, height: 60)
+        brokenHeart.zPosition = 15
+        brokenHeart.alpha = 0.0
+        
+        let fadeIn = SKAction.fadeIn(withDuration: 0.1)
+        let wait = SKAction.wait(forDuration: 0.5)
+        let moveUp = SKAction.moveBy(x: 0, y: 30, duration: 0.5)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.4)
+        
+        let group = SKAction.group([moveUp, fadeOut])
+        let sequence = SKAction.sequence([fadeIn, wait, group, .removeFromParent()])
+        
+        brokenHeart.run(sequence)
+        addChild(brokenHeart)
     }
     
     private func setupFallingWindEffect() {
@@ -180,7 +222,6 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             }
         }
     }
-    
     
     private func setupAudio() {
         if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
@@ -357,7 +398,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     private func bulletDidHitObstacle(bullet: SKNode, obstacle: SKNode) {
-        guard let gameState = gameState, !gameState.isGameOver, let letterInBox = obstacle.userData?["letter"] as? Character else { return }
+        guard let gameState = gameState, let gameKitManager = gameKitManager, !gameState.isGameOver, let letterInBox = obstacle.userData?["letter"] as? Character else { return }
         
         let targetLetterIndex = gameState.currentLetterIndex
         guard targetLetterIndex < gameState.currentWord.count else {
@@ -369,7 +410,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         bullet.removeFromParent()
         
         if letterInBox == targetLetter {
-            gameState.correctLetterShot()
+            gameState.correctLetterShot(gameKitManager: gameKitManager)
             obstacle.removeFromParent()
             run(explosionSound)
             HapticsManager.shared.impact(style: .medium)
@@ -377,6 +418,8 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             gameState.incorrectAction()
             HapticsManager.shared.trigger(.error)
             run(wrongSound)
+            
+            showBrokenHeartEffect(at: obstacle.position)
             
             let shake = SKAction.sequence([
                 .moveBy(x: 10, y: 0, duration: 0.05),
@@ -395,6 +438,8 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             createExplosion(at: node.position)
             node.removeFromParent()
         }
+        
+        showBrokenHeartEffect(at: obstacle.position)
         
         gameState.skipToNextWord()
         HapticsManager.shared.trigger(.error)

@@ -8,55 +8,60 @@
 import SwiftUI
 
 struct STLGameLayout: View {
-    private var words: [String] = WordGenerator().wordList
     
-    @State private var isGameActive = false
-    @State private var gameState: STLGameState?
+    private var words: [String] = WordGenerator().wordList
     
     @StateObject private var gameKitManager = GameKitManager()
     
+    @State private var gameState: STLGameState?
+    @State private var isGameActive = false
+    
+    let stlLeaderboardID = "sort_the_letters_leaderboard"
+    let stlAchievementFilter = "sort_the_letters"
+    
     var body: some View {
-        ZStack {
-            if isGameActive, let currentGameState = gameState {
-                STLGameView(gameState: currentGameState, gameKitManager: gameKitManager)
-            } else {
-                VStack(spacing: 20) {
-                    Text("Word Invaders")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                    
-                    if let finishedGameState = gameState, finishedGameState.isGameOver {
-                        Text("Game Over!\nFinal Score: \(finishedGameState.score)")
-                            .font(.title)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                    }
-                    
-                    Button(action: startGame) {
-                        Text(gameState == nil || gameState!.isGameOver ? "Start Game" : "Play Again")
-                            .font(.title).fontWeight(.bold).padding()
-                            .background(Color.blue).foregroundColor(.white).cornerRadius(15)
-                    }
-                    
-                    if gameKitManager.isAuthenticated {
-                        Button(action: gameKitManager.showLeaderboard) {
-                            HStack {
-                                Image(systemName: "list.number")
-                                Text("Papan Skor")
+        NavigationStack {
+            ZStack {
+                if isGameActive, let activeGameState = gameState {
+                    STLGameView(gameState: activeGameState, gameKitManager: gameKitManager)
+                        .onDisappear {
+                            Task {
+                                activeGameState.submitFinalScoreToLeaderboard(for: gameKitManager, finalScore: activeGameState.score)
+                            }
+                        }
+                } else {
+                    VStack(spacing: 20) {
+                        Text("Word Invaders")
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                        if let finishedGameState = gameState {
+                            Text("Game Over!\nFinal Score: \(finishedGameState.score)")
+                                .font(.title)
+                                .multilineTextAlignment(.center)
+                                .padding()
+                        }
+                        Button(action: startGame) {
+                            Text(gameState == nil ? "Start Game" : "Play Again")
+                                .font(.title).fontWeight(.bold).padding()
+                                .background(Color.blue).foregroundColor(.white).cornerRadius(15)
+                        }
+                        if gameKitManager.isAuthenticated {
+                            NavigationLink(destination: STLLeaderboardView(gameKitManager: gameKitManager, leaderboardID: stlLeaderboardID)) {
+                                Label("Papan Skor", systemImage: "list.number")
+                            }
+                            NavigationLink(destination: STLAchievementsView(gameKitManager: gameKitManager, achievementFilter: stlAchievementFilter)) {
+                                Label("Pencapaian", systemImage: "star.circle")
                             }
                         }
                     }
+                    .buttonStyle(.borderedProminent)
                 }
             }
-        }
-        .preferredColorScheme(.dark)
-        .onAppear(perform: gameKitManager.authenticatePlayer)
-        .onReceive(NotificationCenter.default.publisher(for: .didSTLGameOver)) { notification in
-            if let finishedGame = notification.object as? STLGameState, self.gameState === finishedGame {
-                finishedGame.checkAchievementsAndSubmitScore(
-                    for: gameKitManager,
-                    finalScore: finishedGame.score
-                )
-                self.isGameActive = false
+            .preferredColorScheme(.dark)
+            .onAppear {
+                gameKitManager.authenticatePlayer()
+                NotificationCenter.default.addObserver(forName: .didSTLGameOver, object: nil, queue: .main) { _ in
+                    isGameActive = false
+                }
             }
         }
     }

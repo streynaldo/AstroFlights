@@ -13,13 +13,14 @@ extension Notification.Name {
 }
 
 class STLGameState: ObservableObject {
+    
     @Published var score: Int = 0
     @Published var lives: Int = 100
-    var isGameOver: Bool = false
     @Published var currentWord: String = ""
     @Published var currentLetterIndex: Int = 0
     
     var isWordOnScreen: Bool = false
+    var isGameOver: Bool = false
     
     weak var scene: STLGameScene?
     var onWordCompleted: (() -> Void)?
@@ -28,6 +29,8 @@ class STLGameState: ObservableObject {
     private var wordList: [String]
     private var currentWordIndexInList: Int = -1
     private var personalHighScore: Int = 0
+    
+    private var reportedAchievements: Set<String> = []
     
     init(words: [String]) {
         self.wordList = words.shuffled()
@@ -67,13 +70,17 @@ class STLGameState: ObservableObject {
         scene?.spawnNextWord()
     }
     
-    func correctLetterShot() {
+    func correctLetterShot(gameKitManager: GameKitManager) {
         currentLetterIndex += 1
         
         if currentLetterIndex >= currentWord.count {
             isWordOnScreen = false
             
-            score += 50
+            score += 150
+            
+            checkRealtimeAchievements(for: gameKitManager, currentScore: score)
+            scene?.showCoinRewardEffect()
+            
             onWordCompleted?()
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
@@ -107,23 +114,35 @@ class STLGameState: ObservableObject {
         }
     }
     
-    func checkAchievementsAndSubmitScore(for manager: GameKitManager, finalScore: Int) {
-        manager.submitScore(finalScore, to: "wordinvaders_main_leaderboard")
-        
-        if finalScore >= 100 {
-            manager.reportAchievement(identifier: "achievement_score_100")
-        }
-        if finalScore >= 1000 {
-            manager.reportAchievement(identifier: "achievement_legendary_score")
+    private func checkRealtimeAchievements(for manager: GameKitManager, currentScore: Int) {
+        let score100ID = "100_score_sort_the_letters"
+        if currentScore >= 100 && !reportedAchievements.contains(score100ID) {
+            manager.reportAchievement(identifier: score100ID)
+            reportedAchievements.insert(score100ID)
         }
         
-        if finalScore > self.personalHighScore {
-            self.personalHighScore = finalScore
-            manager.reportAchievement(identifier: "achievement_personal_best")
+        let score1000ID = "1000_score_sort_the_letters"
+        if currentScore >= 1000 && !reportedAchievements.contains(score1000ID) {
+            manager.reportAchievement(identifier: score1000ID)
+            reportedAchievements.insert(score1000ID)
+        }
+        
+        let personalBestID = "new_personal_record_sort_the_letters"
+        if currentScore > self.personalHighScore {
+            self.personalHighScore = currentScore
+            
+            if !reportedAchievements.contains(personalBestID) {
+                manager.reportAchievement(identifier: personalBestID)
+                reportedAchievements.insert(personalBestID)
+            }
+            
             onNewHighScore?()
             saveHighScoreToDevice()
-            print("New personal high score: \(finalScore)")
         }
+    }
+    
+    func submitFinalScoreToLeaderboard(for manager: GameKitManager, finalScore: Int) {
+        manager.submitScore(finalScore, to: "sort_the_letters_leaderboard")
     }
     
     private func saveHighScoreToDevice() {

@@ -52,6 +52,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     var backgroundMusic: SKAudioNode?
     
     override func didMove(to view: SKView) {
+        backgroundColor = SKColor(named: "background_color") ?? .black
         if let musicURL = Bundle.main.url(
             forResource: "bgm",
             withExtension: "mp3"
@@ -85,6 +86,25 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     
     override func update(_ currentTime: TimeInterval) {
         moveBackgroundStrip(speed: 0.6)
+    }
+    
+    private func showBrokenHeartEffect(at position: CGPoint) {
+        let brokenHeart = SKSpriteNode(imageNamed: "broken_heart")
+        brokenHeart.position = position
+        brokenHeart.size = CGSize(width: 60, height: 60)
+        brokenHeart.zPosition = 15 // Paling depan
+        brokenHeart.alpha = 0.0
+        
+        let fadeIn = SKAction.fadeIn(withDuration: 0.1)
+        let wait = SKAction.wait(forDuration: 0.5)
+        let moveUp = SKAction.moveBy(x: 0, y: 30, duration: 0.5)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.4)
+        
+        let group = SKAction.group([moveUp, fadeOut])
+        let sequence = SKAction.sequence([fadeIn, wait, group, .removeFromParent()])
+        
+        brokenHeart.run(sequence)
+        addChild(brokenHeart)
     }
     
     private func setupFallingWindEffect() {
@@ -361,35 +381,28 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             letterNode = contact.bodyB.node
         }
         
-        if spaceshipHit && letterNode != nil {
+        if spaceshipHit, let hitObstacle = letterNode {
             run(explosionSound)
             HapticsManager.shared.trigger(.error)
-            createExplosion(at: spaceship.position)
-            letterNode?.removeFromParent()
+            createExplosion(at: hitObstacle.position)
+            
+            showBrokenHeartEffect(at: hitObstacle.position)
+            
+            hitObstacle.removeFromParent()
             gameManager.health -= 10
             if gameManager.health <= 0 { resetGame(isGameOver: true) }
-        }
-        
-        if contact.bodyA.node?.name == "bullet" {
-            bulletNode = contact.bodyA.node
-        }
-        else if contact.bodyB.node?.name == "bullet" {
-            bulletNode = contact.bodyB.node
-        }
-        
-        if letterNode == nil {
-            if contact.bodyA.node?.name?
-                .hasPrefix("letter_") == true {
-                letterNode = contact.bodyA.node
-            }
-            else if contact.bodyB.node?.name?.hasPrefix("letter_") == true {
-                letterNode = contact.bodyB.node
-            }
-        }
-        
-        guard let hit = letterNode, let bullet = bulletNode, let name = hit.name, hit.parent != nil else {
             return
         }
+        
+        if contact.bodyA.node?.name == "bullet" { bulletNode = contact.bodyA.node }
+        else if contact.bodyB.node?.name == "bullet" { bulletNode = contact.bodyB.node }
+        
+        if letterNode == nil {
+            if contact.bodyA.node?.name?.hasPrefix("letter_") == true { letterNode = contact.bodyA.node }
+            else if contact.bodyB.node?.name?.hasPrefix("letter_") == true { letterNode = contact.bodyB.node }
+        }
+        
+        guard let hit = letterNode, let bullet = bulletNode, let name = hit.name, hit.parent != nil else { return }
         
         bullet.removeFromParent()
         let letter = name.replacingOccurrences(of: "letter_", with: "").first!
@@ -415,6 +428,9 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         } else {
             run(wrongSound)
             HapticsManager.shared.trigger(.error)
+            
+            showBrokenHeartEffect(at: hit.position)
+            
             gameManager.health -= 5
             if gameManager.health <= 0 { resetGame(isGameOver: true) }
         }

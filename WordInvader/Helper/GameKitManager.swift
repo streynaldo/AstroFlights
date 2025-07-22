@@ -9,16 +9,30 @@ import Foundation
 import GameKit
 import SwiftUI
 
-// DIUBAH: Wariskan dari NSObject dan gabungkan konformasi delegate di sini
+struct LeaderboardEntry: Identifiable {
+    let id = UUID()
+    let rank: Int
+    let playerName: String
+    let score: String
+}
+
+struct Achievement: Identifiable {
+    let id: String
+    let title: String
+    let description: String
+    let isCompleted: Bool
+    let points: Int
+}
+
 final class GameKitManager: NSObject, ObservableObject, GKGameCenterControllerDelegate {
     
     @Published var isAuthenticated = GKLocalPlayer.local.isAuthenticated
+    @Published var leaderboardEntries = [LeaderboardEntry]()
+    @Published var achievements = [Achievement]()
     
-    // Fungsi untuk otentikasi pemain
     func authenticatePlayer() {
         GKLocalPlayer.local.authenticateHandler = { [weak self] vc, error in
             if let viewController = vc {
-                // Tampilkan layar login Game Center jika diperlukan
                 self?.getRootViewController()?.present(viewController, animated: true)
                 return
             }
@@ -32,12 +46,78 @@ final class GameKitManager: NSObject, ObservableObject, GKGameCenterControllerDe
         }
     }
     
-    // Fungsi untuk mengirim skor ke leaderboard
-    func submitScore(_ score: Int, to leaderboardID: String) {
-        guard isAuthenticated else {
-            print("Player not authenticated. Cannot submit score.")
-            return
+    // --- FUNGSI LEADERBOARD YANG DIPERBAIKI ---
+    func fetchLeaderboardEntries(id: String) {
+        guard isAuthenticated else { return }
+        
+        DispatchQueue.main.async {
+            self.leaderboardEntries.removeAll()
         }
+        
+        Task {
+            do {
+                guard let leaderboard = (try await GKLeaderboard.loadLeaderboards(IDs: [id])).first else {
+                    print("Error: Leaderboard with ID \(id) not found.")
+                    return
+                }
+                
+                let (_, allScores, _) = try await leaderboard.loadEntries(for: .global, timeScope: .allTime, range: NSRange(location: 1, length: 100))
+                
+                // Buat dan isi array di dalam scope Task
+                let finalEntries: [LeaderboardEntry] = allScores.map { entry in
+                    LeaderboardEntry(rank: entry.rank, playerName: entry.player.displayName, score: entry.formattedScore)
+                }
+                
+                // Pindah ke Main Thread untuk update UI
+                await MainActor.run {
+                    self.leaderboardEntries = finalEntries
+                }
+            } catch {
+                print("Error fetching leaderboard entries: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // --- FUNGSI ACHIEVEMENTS YANG DIPERBAIKI ---
+    func fetchAchievements(filterBy keyword: String? = nil) {
+        guard isAuthenticated else { return }
+        
+        DispatchQueue.main.async {
+            self.achievements.removeAll()
+        }
+        
+        Task {
+            do {
+                let allAchievementDescriptions = try await GKAchievementDescription.loadAchievementDescriptions()
+                let playerAchievements = try await GKAchievement.loadAchievements()
+                
+                let playerProgress: [String: GKAchievement] = playerAchievements.reduce(into: [:]) { result, achievement in
+                    result[achievement.identifier] = achievement
+                }
+                
+                // Buat dan isi array di dalam scope Task
+                let finalAchievements: [Achievement] = allAchievementDescriptions.compactMap { desc in
+                    // Filter berdasarkan keyword
+                    if let keyword = keyword, !desc.identifier.contains(keyword) {
+                        return nil // Lewati jika tidak cocok
+                    }
+                    
+                    let isCompleted = playerProgress[desc.identifier]?.isCompleted ?? false
+                    return Achievement(id: desc.identifier, title: desc.title, description: isCompleted ? desc.achievedDescription : desc.unachievedDescription, isCompleted: isCompleted, points: desc.maximumPoints)
+                }
+                
+                // Pindah ke Main Thread untuk update UI dengan array yang sudah final
+                await MainActor.run {
+                    self.achievements = finalAchievements
+                }
+            } catch {
+                print("Error fetching achievements: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    func submitScore(_ score: Int, to leaderboardID: String) {
+        guard isAuthenticated else { return }
         GKLeaderboard.submitScore(score, context: 0, player: GKLocalPlayer.local, leaderboardIDs: [leaderboardID]) { error in
             if let error = error {
                 print("Error submitting score: \(error.localizedDescription)")
@@ -47,11 +127,10 @@ final class GameKitManager: NSObject, ObservableObject, GKGameCenterControllerDe
         }
     }
     
-    // Fungsi untuk melaporkan pencapaian (achievement)
     func reportAchievement(identifier: String) {
         guard isAuthenticated else { return }
         let achievement = GKAchievement(identifier: identifier)
-        achievement.percentComplete = 100.0 // Selalu 100% untuk achievement yang sekali dapat
+        achievement.percentComplete = 100.0
         GKAchievement.report([achievement]) { error in
             if let error = error {
                 print("Error reporting achievement: \(error.localizedDescription)")
@@ -61,22 +140,11 @@ final class GameKitManager: NSObject, ObservableObject, GKGameCenterControllerDe
         }
     }
     
-    // Fungsi untuk menampilkan papan skor
-    func showLeaderboard() {
-        guard isAuthenticated else { return }
-        let gameCenterVC = GKGameCenterViewController(state: .leaderboards)
-        gameCenterVC.gameCenterDelegate = self
-        getRootViewController()?.present(gameCenterVC, animated: true)
-    }
-    
-    // Fungsi helper untuk mendapatkan root view controller dari SwiftUI
     private func getRootViewController() -> UIViewController? {
-        // Menggunakan cara yang lebih modern dan aman untuk iOS 15+
         let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
         return windowScene?.windows.first?.rootViewController
     }
     
-    // DIUBAH: Pindahkan fungsi delegate ke dalam class utama
     func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
         gameCenterViewController.dismiss(animated: true)
     }
