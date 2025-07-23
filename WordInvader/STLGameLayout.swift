@@ -17,7 +17,10 @@ struct STLGameLayout: View {
     @State private var isGameActive = false
     
     let stlLeaderboardID = "sort_the_letters_leaderboard"
+    let fitbLeaderboardID = "fill_in_the_blank_leaderboard"
+    
     let stlAchievementFilter = "sort_the_letters"
+    let fitbAchievementFilter = "fill_in_the_blank"
     
     var body: some View {
         NavigationStack {
@@ -45,10 +48,11 @@ struct STLGameLayout: View {
                                 .background(Color.blue).foregroundColor(.white).cornerRadius(15)
                         }
                         if gameKitManager.isAuthenticated {
-                            NavigationLink(destination: STLLeaderboardView(gameKitManager: gameKitManager, leaderboardID: stlLeaderboardID)) {
+                            NavigationLink(destination: LeaderboardView(gameKitManager: gameKitManager, stlLeaderboardID: stlLeaderboardID, fitbLeaderboardID: fitbLeaderboardID)) {
                                 Label("Papan Skor", systemImage: "list.number")
                             }
-                            NavigationLink(destination: STLAchievementsView(gameKitManager: gameKitManager, achievementFilter: stlAchievementFilter)) {
+                            
+                            NavigationLink(destination: AchievementsView(gameKitManager: gameKitManager, stlAchievementFilter: stlAchievementFilter, fitbAchievementFilter: fitbAchievementFilter)) {
                                 Label("Pencapaian", systemImage: "star.circle")
                             }
                         }

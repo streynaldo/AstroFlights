@@ -14,6 +14,8 @@ extension Notification.Name {
 
 class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     
+    var gameKitManager: GameKitManager?
+    
     var spaceship: SKSpriteNode!
     var previousTouchPosition: CGPoint?
     
@@ -418,6 +420,11 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             if task.isComplete {
                 gameManager.score += 50
                 score += 50
+                
+                if let manager = gameKitManager {
+                    gameManager.checkRealtimeAchievements(for: manager)
+                }
+                
                 currentTask = nil
                 gameManager.currentTaskText = "Good Job"
                 run(SKAction.sequence([

@@ -22,6 +22,7 @@ struct Achievement: Identifiable {
     let description: String
     let isCompleted: Bool
     let points: Int
+    let image: UIImage?
 }
 
 final class GameKitManager: NSObject, ObservableObject, GKGameCenterControllerDelegate {
@@ -46,73 +47,75 @@ final class GameKitManager: NSObject, ObservableObject, GKGameCenterControllerDe
         }
     }
     
-    // --- FUNGSI LEADERBOARD YANG DIPERBAIKI ---
-    func fetchLeaderboardEntries(id: String) {
+    func fetchLeaderboardEntries(id: String) async {
         guard isAuthenticated else { return }
         
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.leaderboardEntries.removeAll()
         }
         
-        Task {
-            do {
-                guard let leaderboard = (try await GKLeaderboard.loadLeaderboards(IDs: [id])).first else {
-                    print("Error: Leaderboard with ID \(id) not found.")
-                    return
-                }
-                
-                let (_, allScores, _) = try await leaderboard.loadEntries(for: .global, timeScope: .allTime, range: NSRange(location: 1, length: 100))
-                
-                // Buat dan isi array di dalam scope Task
-                let finalEntries: [LeaderboardEntry] = allScores.map { entry in
-                    LeaderboardEntry(rank: entry.rank, playerName: entry.player.displayName, score: entry.formattedScore)
-                }
-                
-                // Pindah ke Main Thread untuk update UI
-                await MainActor.run {
-                    self.leaderboardEntries = finalEntries
-                }
-            } catch {
-                print("Error fetching leaderboard entries: \(error.localizedDescription)")
+        do {
+            guard let leaderboard = (try await GKLeaderboard.loadLeaderboards(IDs: [id])).first else {
+                print("Error: Leaderboard with ID \(id) not found.")
+                return
             }
+            
+            let (_, allScores, _) = try await leaderboard.loadEntries(for: .global, timeScope: .allTime, range: NSRange(location: 1, length: 100))
+            
+            let finalEntries: [LeaderboardEntry] = allScores.map { entry in
+                LeaderboardEntry(rank: entry.rank, playerName: entry.player.displayName, score: entry.formattedScore)
+            }
+            
+            await MainActor.run {
+                self.leaderboardEntries = finalEntries
+            }
+        } catch {
+            print("Error fetching leaderboard entries: \(error.localizedDescription)")
         }
     }
     
-    // --- FUNGSI ACHIEVEMENTS YANG DIPERBAIKI ---
-    func fetchAchievements(filterBy keyword: String? = nil) {
+    func fetchAchievements(filterBy keyword: String? = nil) async {
         guard isAuthenticated else { return }
         
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.achievements.removeAll()
         }
         
-        Task {
-            do {
-                let allAchievementDescriptions = try await GKAchievementDescription.loadAchievementDescriptions()
-                let playerAchievements = try await GKAchievement.loadAchievements()
-                
-                let playerProgress: [String: GKAchievement] = playerAchievements.reduce(into: [:]) { result, achievement in
-                    result[achievement.identifier] = achievement
-                }
-                
-                // Buat dan isi array di dalam scope Task
-                let finalAchievements: [Achievement] = allAchievementDescriptions.compactMap { desc in
-                    // Filter berdasarkan keyword
-                    if let keyword = keyword, !desc.identifier.contains(keyword) {
-                        return nil // Lewati jika tidak cocok
-                    }
-                    
-                    let isCompleted = playerProgress[desc.identifier]?.isCompleted ?? false
-                    return Achievement(id: desc.identifier, title: desc.title, description: isCompleted ? desc.achievedDescription : desc.unachievedDescription, isCompleted: isCompleted, points: desc.maximumPoints)
-                }
-                
-                // Pindah ke Main Thread untuk update UI dengan array yang sudah final
-                await MainActor.run {
-                    self.achievements = finalAchievements
-                }
-            } catch {
-                print("Error fetching achievements: \(error.localizedDescription)")
+        do {
+            let allAchievementDescriptions = try await GKAchievementDescription.loadAchievementDescriptions()
+            let playerAchievements = try await GKAchievement.loadAchievements()
+            
+            let playerProgress: [String: GKAchievement] = playerAchievements.reduce(into: [:]) { result, achievement in
+                result[achievement.identifier] = achievement
             }
+            
+            let finalAchievements: [Achievement] = try await withThrowingTaskGroup(of: Achievement?.self, returning: [Achievement].self) { group in
+                for desc in allAchievementDescriptions {
+                    group.addTask {
+                        if let keyword = keyword, !desc.identifier.contains(keyword) {
+                            return nil
+                        }
+                        
+                        let image = try? await desc.loadImage()
+                        let isCompleted = playerProgress[desc.identifier]?.isCompleted ?? false
+                        return Achievement(id: desc.identifier, title: desc.title, description: isCompleted ? desc.achievedDescription : desc.unachievedDescription, isCompleted: isCompleted, points: desc.maximumPoints, image: image)
+                    }
+                }
+                
+                var results = [Achievement]()
+                for try await achievement in group {
+                    if let achievement = achievement {
+                        results.append(achievement)
+                    }
+                }
+                return results
+            }
+            
+            await MainActor.run {
+                self.achievements = finalAchievements
+            }
+        } catch {
+            print("Error fetching achievements: \(error.localizedDescription)")
         }
     }
     
