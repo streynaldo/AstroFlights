@@ -23,6 +23,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     var currentTask: WordTask!
     var currentGameSession: GameSession!
     var score : Int = 0
+    var streak: Int = 0
     
     var isResetting = false
     
@@ -37,7 +38,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     var onNewHighScore: (() -> Void)?
     private var personalHighScore: Int = (UserDefaults.standard.integer(forKey: "personalHighScore_FITB") != 0) ? UserDefaults.standard.integer(forKey: "personalHighScore_FITB") : 0
     
-    var obstacleSpeed : CGFloat = 8
+    var obstacleSpeed : CGFloat = 10
     
     var backgroundMusic: SKAudioNode?
     
@@ -50,7 +51,10 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
             backgroundMusic = SKAudioNode(url: musicURL)
             backgroundMusic?.autoplayLooped = true
-            addChild(backgroundMusic!)
+            if !ProcessInfo.processInfo.environment.keys.contains("XCODE_RUNNING_FOR_PREVIEWS") {
+                addChild(backgroundMusic!)
+                        }
+//            addChild(backgroundMusic!)
         }
         
         currentGameSession = GameSession()
@@ -68,21 +72,8 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         
         setupSpaceship()
         
-        // Spaceship setup...
-//        spaceship = SKSpriteNode(imageNamed: "spaceship_idle")
-//        spaceship.size = CGSize(width: 60, height: 70)
-//        spaceship.position = CGPoint(x: size.width / 2, y: 100)
-//        addChild(spaceship)
-        
         // 🚨 Ini WAJIB 🚨
         physicsWorld.contactDelegate = self
-        
-//        // physics body ke spaceship
-//        spaceship.physicsBody = SKPhysicsBody(rectangleOf: spaceship.size)
-//        spaceship.physicsBody?.isDynamic = false // Supaya spaceship gak kena gravity
-//        spaceship.physicsBody?.categoryBitMask = 0x1 << 2 // 🚀 spaceship = kategori 2
-//        spaceship.physicsBody?.contactTestBitMask = 0x1 << 1 // bisa kontak dengan obstacle
-//        spaceship.physicsBody?.collisionBitMask = 0
         
         let floorNode = SKNode()
         floorNode.position = CGPoint(x: size.width / 2, y: 0) // dasar screen
@@ -126,10 +117,12 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             
             // Kalo node kelewat minus hp
             if let task = currentTask, !task.isComplete {
-                gameManager.health -= 10
-                if gameManager.health <= 0 {
-                    resetGame(isGameOver: true)
-                    return
+                gameManager.score -= 25
+                score -= 25
+                streak = 0
+                if gameManager.score <= 0 {
+                    gameManager.score = 0
+                    score = 0
                 }
             }
             
@@ -155,7 +148,10 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             createExplosion(at: spaceship.position)
             letterNode?.removeFromParent() // hapus obstacle yang kena
             //            NABRAK MINUS HP
-            gameManager.health -= 10
+            gameManager.health -= 1
+            
+            streak = 0
+            print("Spaceship hit! Health: \(gameManager.health)")
             if gameManager.health <= 0 {
                 resetGame(isGameOver: true)
             }
@@ -198,6 +194,12 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             gameManager.currentTaskText = task.display
             
             if task.isComplete {
+                streak += 1
+                
+                if streak % 3 == 0 {
+                    gameManager.health = min(gameManager.health + 1, 5) // Cap at maximum 5 health
+                    print("Streak! Health increased to \(gameManager.health)")
+                }
                 // Mark word as used in SwiftData
                 wordDataManager.markWordAsUsed(task.word)
                 
@@ -220,8 +222,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
                 ]))
             }
         } else {
-            // SELALU kurangi HP kalau huruf SALAH atau decoy
-            
+//            SALAH
             let shake = SKAction.sequence([
                 .moveBy(x: 10, y: 0, duration: 0.05),
                 .moveBy(x: -20, y: 0, duration: 0.1),
@@ -231,9 +232,11 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
 
             run(wrongSound)
             HapticsManager.shared.trigger(.error)
-            gameManager.health -= 5
-            if gameManager.health <= 0 {
-                resetGame(isGameOver: true)
+            gameManager.score -= 10
+            score -= 10
+            if gameManager.score <= 0 {
+                gameManager.score = 0
+                score = 0
             }
         }
         
@@ -502,10 +505,10 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         let yStart = size.height + 40
         
         // Hitung pengurang dari score
-        let speedUpFactor = floor(Double(gameManager.score / 100) * 0.5)
+        let speedUpFactor = Double(gameManager.score / 100) * 0.5
         
         // Hitung durasi final, clamp ke minimum misalnya 3 detik
-        obstacleSpeed = max(4.0, obstacleSpeed - speedUpFactor)
+        obstacleSpeed = max(4.5, obstacleSpeed - speedUpFactor)
         
         for (i, letter) in obstacles.enumerated() {
             let randNumber = Int.random(in: 1...3)
@@ -615,7 +618,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         obstacleSpeed = 8
         gameManager.score = 0
         score = 0
-        gameManager.health = 100
+        gameManager.health = 5
         gameManager.isGameOver = false
         isResetting = false
         
@@ -660,7 +663,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
                 SKAction.run { [weak self] in
                     guard let self = self else { return }
                     stopBGM()
-                    self.gameManager.health = 100
+                    self.gameManager.health = 5
                     self.isResetting = false
                 }
             ]))
@@ -668,7 +671,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             // Reset for new game
             gameManager.score = 0
             score = 0
-            gameManager.health = 100
+            gameManager.health = 5
             run(SKAction.sequence([
                 SKAction.wait(forDuration: 0.5),
                 SKAction.run { [weak self] in
