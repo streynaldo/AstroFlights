@@ -9,6 +9,7 @@ import SwiftUI
 import SpriteKit
 
 struct STLGameView: View {
+    
     @ObservedObject var gameState: STLGameState
     @ObservedObject var gameKitManager: GameKitManager
     
@@ -23,9 +24,9 @@ struct STLGameView: View {
         let initialScene = STLGameScene(size: UIScreen.main.bounds.size)
         initialScene.scaleMode = .aspectFill
         initialScene.gameState = gameState
+        initialScene.gameKitManager = gameKitManager
         
         _scene = State(initialValue: initialScene)
-        gameState.scene = initialScene
     }
     
     var body: some View {
@@ -39,6 +40,7 @@ struct STLGameView: View {
         }
         .onAppear {
             setupCallbacks()
+            gameState.scene = scene
             gameState.startGame()
         }
     }
@@ -59,7 +61,7 @@ struct STLGameView: View {
     private var centerScreenAnimations: some View {
         ZStack {
             if showSuccessAnimation {
-                Text("KATA SELESAI!")
+                Text("CORRECT WORD!")
                     .font(.system(size: 48, weight: .black, design: .monospaced))
                     .foregroundColor(.green)
                     .shadow(color: .black, radius: 2)
@@ -68,7 +70,7 @@ struct STLGameView: View {
             }
             
             if showHighScoreAnimation {
-                Text("REKOR BARU!")
+                Text("NEW RECORD!")
                     .font(.system(size: 52, weight: .black, design: .rounded))
                     .foregroundColor(.yellow)
                     .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 3)
