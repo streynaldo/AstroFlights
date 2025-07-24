@@ -24,12 +24,13 @@ struct FITBGameView: View {
             
             if !gameManager.isGameOver {
                 VStack {
+                    // TOP ROW: SCORE, WORD, PAUSE BUTTON
                     HStack(spacing: 16) {
                         // SCORE BOX
-                        VStack {
-                            Text("SCORE")
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundColor(.green)
+                        HStack {
+                            Image("coin")
+                                .resizable()
+                                .frame(width: 24, height: 24)
                                 .shadow(color: .black, radius: 1, x: 1, y: 1)
                             Text("\(gameManager.score)")
                                 .font(.system(size: 28, weight: .black, design: .monospaced))
@@ -46,10 +47,10 @@ struct FITBGameView: View {
                         
                         // CURRENT WORD
                         VStack {
-                            Text("WORD")
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundColor(.cyan)
-                                .shadow(color: .black, radius: 1, x: 1, y: 1)
+//                            Text("WORD")
+//                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+//                                .foregroundColor(.cyan)
+//                                .shadow(color: .black, radius: 1, x: 1, y: 1)
                             Text(gameManager.currentTaskText)
                                 .font(.system(size: 28, weight: .black, design: .monospaced))
                                 .tracking(5)
@@ -68,25 +69,6 @@ struct FITBGameView: View {
                         .cornerRadius(4)
                         .frame(maxWidth: .infinity)
                         
-                        // HEALTH BOX
-                        VStack {
-                            Text("HP")
-                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                .foregroundColor(.red)
-                                .shadow(color: .black, radius: 1, x: 1, y: 1)
-                            Text("\(gameManager.health)")
-                                .font(.system(size: 28, weight: .black, design: .monospaced))
-                                .foregroundColor(.red)
-                                .shadow(color: .black, radius: 2, x: 2, y: 2)
-                        }
-                        .padding(8)
-                        .background(Color.black.opacity(0.7))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.red, lineWidth: 2)
-                        )
-                        .cornerRadius(4)
-                        
                         // PAUSE BUTTON
                         Button(action: {
                             togglePause()
@@ -103,9 +85,22 @@ struct FITBGameView: View {
                                 .cornerRadius(4)
                         }
                     }
+                    
+                    // HEALTH HEARTS DISPLAY (CENTER BELOW)
+                    HStack(spacing: 4) {
+                        ForEach(1...5, id: \.self) { heartIndex in
+                            Image(heartIndex <= gameManager.health ? "fullheart" : "deadheart")
+                                .resizable()
+                                .frame(width: 24, height: 24)
+                                .shadow(color: .black, radius: 1, x: 1, y: 1)
+                        }
+                    }
+                    .padding(.top, 8)
+                    
                     Spacer()
                 }
                 .padding(.top, 50)
+                .padding(.horizontal)
             }
             
             // PAUSE OVERLAY
@@ -133,21 +128,21 @@ struct FITBGameView: View {
                                 .shadow(color: .white, radius: 0, x: 3, y: 3)
                         }
                         
-                        Button(action: {
-                            restartGame()
-                        }) {
-                            Text("RESTART")
-                                .font(.system(size: 20, weight: .black, design: .monospaced))
-                                .foregroundColor(.black)
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, 40)
-                                .background(Color.yellow)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 0)
-                                        .stroke(Color.white, lineWidth: 2)
-                                )
-                                .shadow(color: .white, radius: 0, x: 3, y: 3)
-                        }
+//                        Button(action: {
+//                            restartGame()
+//                        }) {
+//                            Text("RESTART")
+//                                .font(.system(size: 20, weight: .black, design: .monospaced))
+//                                .foregroundColor(.black)
+//                                .padding(.vertical, 12)
+//                                .padding(.horizontal, 40)
+//                                .background(Color.yellow)
+//                                .overlay(
+//                                    RoundedRectangle(cornerRadius: 0)
+//                                        .stroke(Color.white, lineWidth: 2)
+//                                )
+//                                .shadow(color: .white, radius: 0, x: 3, y: 3)
+//                        }
                     }
                 }
                 .padding(40)
@@ -242,4 +237,9 @@ struct FITBGameView: View {
         scene.isPaused = false
         scene.startNewGame()
     }
+}
+
+#Preview {
+    FITBGameView()
+        .preferredColorScheme(.dark)
 }
