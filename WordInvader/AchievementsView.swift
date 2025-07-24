@@ -40,7 +40,7 @@ struct AchievementsView: View {
                     }
                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     .frame(maxHeight: .infinity)
-                } else if gameKitManager.achievements.isEmpty && isLoading {
+                } else if gameKitManager.achievements.isEmpty {
                     emptyStateView(message: "No achievements to show.\nKeep playing to unlock them!")
                 } else {
                     ScrollView {
@@ -49,14 +49,13 @@ struct AchievementsView: View {
                                 AchievementCardView(achievement: achievement)
                             }
                         }
-                        .padding(.horizontal)
+                        .padding(.all)
                     }
                 }
             }
         }
         .onAppear {
             fetchDataForSelectedMode()
-            isLoading = false
         }
         .onChange(of: selectedGameMode) { _, _ in
             fetchDataForSelectedMode()
@@ -94,38 +93,69 @@ struct AchievementsView: View {
 struct AchievementCardView: View {
     let achievement: Achievement
     
+    private var cardBackgroundImageName: String {
+        if achievement.id.contains("1000") {
+            return "card_1000"
+        } else if achievement.id.contains("100") {
+            return "card_100"
+        } else if achievement.id.contains("personal_record") {
+            return "card_record"
+        }
+        return "achievement_card"
+    }
+    
+    private var circleFrameImageName: String {
+        return achievement.isCompleted ? "circle_yellow" : "circle_gray"
+    }
+    
     var body: some View {
-        VStack(spacing: 20) {
-            Group {
-                if let uiImage = achievement.image {
-                    Image(uiImage: uiImage)
+        ZStack {
+            Image(cardBackgroundImageName)
+                .resizable()
+                .scaledToFill()
+            
+            VStack(spacing: 8) {
+                ZStack {
+                    Group {
+                        if let uiImage = achievement.image {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                        } else {
+                            Image(systemName: "shield.slash")
+                        }
+                    }
+                    .frame(width: 60, height: 60)
+                    .clipShape(Circle())
+                    
+                    Image(circleFrameImageName)
                         .resizable()
                         .scaledToFit()
-                } else {
-                    Image(systemName: "shield.slash")
+                        .frame(width: 80, height: 80)
                 }
+                .padding(.top, 12)
+                
+                Text(achievement.title)
+                    .font(.headline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                
+                Spacer(minLength: 0)
+                
+                Text(achievement.description)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+                
+                Spacer(minLength: 0)
             }
-            .frame(width: 80, height: 80)
-            .clipShape(Circle())
-            .overlay(Circle().stroke(achievement.isCompleted ? Color.yellow : Color.gray, lineWidth: 2))
-            
-            Text(achievement.title)
-                .font(.headline)
-                .foregroundColor(.white)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-            
-            Text(achievement.description)
-                .font(.caption)
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 4)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 24)
         }
-        .frame(height: 220)
-        .frame(maxWidth: .infinity)
-        .padding(10)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(15)
-        .opacity(achievement.isCompleted ? 1.0 : 0.5)
+        .opacity(achievement.isCompleted ? 1.0 : 0.7)
     }
 }
