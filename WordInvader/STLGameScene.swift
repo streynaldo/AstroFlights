@@ -144,6 +144,8 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         
         var occupiedFrames = [CGRect]()
         
+        placeAssets(on: container, textureNames: ["spacestation"], count: 2, zPosition: -7, occupiedFrames: &occupiedFrames)
+        
         placeAssets(on: container, textureNames: ["galaxy"], count: 2, zPosition: -9, occupiedFrames: &occupiedFrames)
         
         placeAssets(on: container, textureNames: ["cloud_1", "cloud_2", "cloud_3"], count: 4, zPosition: -8, occupiedFrames: &occupiedFrames)
@@ -192,6 +194,8 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             let aspectRatio = node.texture!.size().height / node.texture!.size().width
             let nodeWidth = self.size.width * CGFloat.random(in: 0.25...0.50)
             node.size = CGSize(width: nodeWidth, height: nodeWidth * aspectRatio)
+            
+            node.zRotation = CGFloat.random(in: -0.52...0.52)
             
             var attempts = 0
             var positionIsSafe = false

@@ -172,6 +172,8 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
         let container = SKNode()
         var occupiedFrames = [CGRect]()
         
+        placeAssets(on: container, textureNames: ["spacestation"], count: 2, zPosition: -7, occupiedFrames: &occupiedFrames)
+        
         placeAssets(
             on: container,
             textureNames: ["galaxy"],
@@ -250,6 +252,8 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
                 width: nodeWidth,
                 height: nodeWidth * aspectRatio
             )
+            
+            node.zRotation = CGFloat.random(in: -0.52...0.52)
             
             var attempts = 0
             var positionIsSafe = false

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SpriteKit
 
 struct AchievementsView: View {
     @ObservedObject var gameKitManager: GameKitManager
@@ -20,48 +21,59 @@ struct AchievementsView: View {
     @State private var isLoading = false
     
     var body: some View {
-        ZStack {
-            Color("background_color").ignoresSafeArea()
-            
-            VStack {
-                Picker("Game Mode", selection: $selectedGameMode) {
-                    ForEach(GameMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding()
+        GeometryReader { geometry in
+            ZStack {
+                SpriteView(scene: {
+                    let scene = MainMenuScene()
+                    scene.size = geometry.size
+                    scene.scaleMode = .aspectFill
+                    return scene
+                }())
+                .ignoresSafeArea()
                 
-                if isLoading {
-                    ProgressView {
-                        Text("Fetching Achievements...")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                    }
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .frame(maxHeight: .infinity)
-                } else if gameKitManager.achievements.isEmpty {
-                    emptyStateView(message: "No achievements to show.\nKeep playing to unlock them!")
-                } else {
-                    ScrollView {
-                        LazyVGrid(columns: gridLayout, spacing: 16) {
-                            ForEach(gameKitManager.achievements) { achievement in
-                                AchievementCardView(achievement: achievement)
-                            }
+                Color.black.opacity(0.7)
+                    .ignoresSafeArea()
+                
+                VStack {
+                    Picker("Game Mode", selection: $selectedGameMode) {
+                        ForEach(GameMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
                         }
-                        .padding(.all)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding()
+                    
+                    if isLoading {
+                        ProgressView {
+                            Text("Fetching Achievements...")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                        }
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .frame(maxHeight: .infinity)
+                    } else if gameKitManager.achievements.isEmpty {
+                        emptyStateView(message: "No achievements to show.\nKeep playing to unlock them!")
+                    } else {
+                        ScrollView {
+                            LazyVGrid(columns: gridLayout, spacing: 16) {
+                                ForEach(gameKitManager.achievements) { achievement in
+                                    AchievementCardView(achievement: achievement)
+                                }
+                            }
+                            .padding(.all)
+                        }
                     }
                 }
             }
+            .onAppear {
+                fetchDataForSelectedMode()
+            }
+            .onChange(of: selectedGameMode) { _, _ in
+                fetchDataForSelectedMode()
+            }
+            .navigationTitle("Achievements")
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .onAppear {
-            fetchDataForSelectedMode()
-        }
-        .onChange(of: selectedGameMode) { _, _ in
-            fetchDataForSelectedMode()
-        }
-        .navigationTitle("Achievements")
-        .navigationBarTitleDisplayMode(.inline)
     }
     
     private func emptyStateView(message: String) -> some View {
@@ -94,14 +106,14 @@ struct AchievementCardView: View {
     let achievement: Achievement
     
     private var cardBackgroundImageName: String {
-        if achievement.id.contains("1000") {
+        if achievement.id.contains("1000") && achievement.isCompleted {
             return "1000_score_card"
-        } else if achievement.id.contains("100") {
+        } else if achievement.id.contains("100") && achievement.isCompleted {
             return "100_score_card"
-        } else if achievement.id.contains("personal_record") {
+        } else if achievement.id.contains("personal_record") && achievement.isCompleted {
             return "new_personal_record_card"
         }
-        return "achievement_card"
+        return "locked_achievement_card"
     }
     
     private var circleFrameImageName: String {

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SpriteKit
 
 enum GameMode: String, CaseIterable, Identifiable {
     case stl = "Sort The Letters"
@@ -24,48 +25,59 @@ struct LeaderboardView: View {
     @State private var isLoading = false
     
     var body: some View {
-        ZStack {
-            Color("background_color").ignoresSafeArea()
-            
-            VStack {
-                Picker("Game Mode", selection: $selectedGameMode) {
-                    ForEach(GameMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding()
+        GeometryReader { geometry in
+            ZStack {
+                SpriteView(scene: {
+                    let scene = MainMenuScene()
+                    scene.size = geometry.size
+                    scene.scaleMode = .aspectFill
+                    return scene
+                }())
+                .ignoresSafeArea()
                 
-                if isLoading {
-                    ProgressView {
-                        Text("Fetching Scores...")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                    }
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .frame(maxHeight: .infinity)
-                } else if gameKitManager.leaderboardEntries.isEmpty {
-                    emptyStateView(message: "No scores yet.\nBe the first to set a record!")
-                } else {
-                    ScrollView {
-                        VStack(spacing: 8) {
-                            ForEach(gameKitManager.leaderboardEntries) { entry in
-                                LeaderboardRowView(entry: entry)
-                            }
+                Color.black.opacity(0.7)
+                    .ignoresSafeArea()
+                
+                VStack {
+                    Picker("Game Mode", selection: $selectedGameMode) {
+                        ForEach(GameMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
                         }
-                        .padding(.horizontal)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding()
+                    
+                    if isLoading {
+                        ProgressView {
+                            Text("Fetching Scores...")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                        }
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .frame(maxHeight: .infinity)
+                    } else if gameKitManager.leaderboardEntries.isEmpty {
+                        emptyStateView(message: "No scores yet.\nBe the first to set a record!")
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 26) {
+                                ForEach(gameKitManager.leaderboardEntries) { entry in
+                                    LeaderboardRowView(entry: entry)
+                                }
+                            }
+                            .padding(.all)
+                        }
                     }
                 }
             }
+            .onAppear {
+                fetchDataForSelectedMode()
+            }
+            .onChange(of: selectedGameMode) { _, _ in
+                fetchDataForSelectedMode()
+            }
+            .navigationTitle("Leaderboard")
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .onAppear {
-            fetchDataForSelectedMode()
-        }
-        .onChange(of: selectedGameMode) { _, _ in
-            fetchDataForSelectedMode()
-        }
-        .navigationTitle("Leaderboard")
-        .navigationBarTitleDisplayMode(.inline)
     }
     
     private func emptyStateView(message: String) -> some View {
@@ -97,15 +109,30 @@ struct LeaderboardView: View {
 struct LeaderboardRowView: View {
     let entry: LeaderboardEntry
     
+    private var rankBackgroundImageName: String {
+        switch entry.rank {
+        case 1:
+            return "leaderboard_row_1st"
+        case 2:
+            return "leaderboard_row_2nd"
+        case 3:
+            return "leaderboard_row_3rd"
+        default:
+            return "leaderboard_row_default"
+        }
+    }
+    
     var body: some View {
         HStack {
             Text("\(entry.rank)")
-                .font(.headline)
+                .font(.title3)
+                .fontWeight(.bold)
                 .foregroundColor(.yellow)
-                .frame(width: 40)
+                .padding(.trailing, 12)
             
             Text(entry.playerName)
-                .font(.headline)
+                .font(.title3)
+                .fontWeight(.bold)
                 .foregroundColor(.white)
             
             Spacer()
@@ -119,8 +146,12 @@ struct LeaderboardRowView: View {
                 .scaledToFit()
                 .frame(width: 24, height: 24)
         }
-        .padding()
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(10)
+        .padding(.all, 30)
+        .background(
+            Image(rankBackgroundImageName)
+                .resizable()
+        )
+        .frame(height: 70)
+        .padding(.horizontal, 2)
     }
 }
