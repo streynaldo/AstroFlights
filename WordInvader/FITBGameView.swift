@@ -37,7 +37,7 @@ struct FITBGameView: View {
                                 .foregroundColor(.yellow)
                                 .shadow(color: .black, radius: 2, x: 2, y: 2)
                         }
-                        .padding(12)
+                        .padding(8)
                         .background(Color.black.opacity(0.7))
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)
