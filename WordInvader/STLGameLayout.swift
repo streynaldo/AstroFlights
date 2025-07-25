@@ -16,9 +16,7 @@ struct STLGameLayout: View {
     @State private var gameState: STLGameState?
     
     @StateObject private var gameKitManager = GameKitManager()
-    
-    @State private var gameState: STLGameState?
-    @State private var isGameActive = false
+
     
     let stlLeaderboardID = "sort_the_letters_leaderboard"
     let fitbLeaderboardID = "fill_in_the_blank_leaderboard"
@@ -64,7 +62,7 @@ struct STLGameLayout: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-            }
+            
             .preferredColorScheme(.dark)
             .onAppear {
                 gameKitManager.authenticatePlayer()
@@ -98,13 +96,14 @@ struct STLGameLayout: View {
     }
     
     private func startGame() {
+        if wordDataManager == nil {
+            setupWordDataManager()
+        }
         let words = getWordsFromDataManager()
-        
         guard !words.isEmpty else {
             print("No words found!")
             return
         }
-        
         self.gameState = STLGameState(words: words)
         print("Starting game with \(words.count) words.")
         self.isGameActive = true

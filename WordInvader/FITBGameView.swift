@@ -4,25 +4,18 @@
 //
 //  Created by Stefanus Reynaldo on 09/07/25.
 //
-
 import SwiftUI
 import SpriteKit
 import SwiftData
 
 struct FITBGameView: View {
-    @StateObject private var gameManager = GameManager.shared
+    @ObservedObject private var gameManager = FITBGameState.shared
     @Environment(\.modelContext) private var modelContext
     
+    @State private var scene = FITBGameScene(size: CGSize(width: 400, height: 800))
     @StateObject private var gameKitManager = GameKitManager()
     @State private var wordDataManager: WordDataManager?
     @State private var isPaused = false
-    
-    var scene: FITBGameScene {
-        let scene = FITBGameScene(size: UIScreen.main.bounds.size)
-        scene.scaleMode = .fill
-        scene.gameKitManager = gameKitManager
-        return scene
-    }
     
     var body: some View {
         ZStack {
@@ -52,12 +45,9 @@ struct FITBGameView: View {
                         )
                         .cornerRadius(4)
                         
+                        // CURRENT WORD
                         VStack {
-//                            Text("WORD")
-//                                .font(.system(size: 12, weight: .bold, design: .monospaced))
-//                                .foregroundColor(.cyan)
-//                                .shadow(color: .black, radius: 1, x: 1, y: 1)
-                            Text(gameManager.currentTaskText)
+                            Text(gameManager.currentTaskText == "" ? "GET READY!" : gameManager.currentTaskText)
                                 .font(.system(size: 28, weight: .black, design: .monospaced))
                                 .tracking(5)
                                 .foregroundColor(.white)
@@ -90,6 +80,7 @@ struct FITBGameView: View {
                                 )
                                 .cornerRadius(4)
                         }
+                        .disabled(gameManager.isCountingDown)
                     }
                     
                     // HEALTH HEARTS DISPLAY (CENTER BELOW)
@@ -133,22 +124,6 @@ struct FITBGameView: View {
                                 )
                                 .shadow(color: .white, radius: 0, x: 3, y: 3)
                         }
-                        
-//                        Button(action: {
-//                            restartGame()
-//                        }) {
-//                            Text("RESTART")
-//                                .font(.system(size: 20, weight: .black, design: .monospaced))
-//                                .foregroundColor(.black)
-//                                .padding(.vertical, 12)
-//                                .padding(.horizontal, 40)
-//                                .background(Color.yellow)
-//                                .overlay(
-//                                    RoundedRectangle(cornerRadius: 0)
-//                                        .stroke(Color.white, lineWidth: 2)
-//                                )
-//                                .shadow(color: .white, radius: 0, x: 3, y: 3)
-//                        }
                     }
                 }
                 .padding(40)
@@ -157,11 +132,13 @@ struct FITBGameView: View {
             
             if gameManager.isGameOver {
                 VStack(spacing: 20) {
+                    // GAME OVER TITLE
                     Text("GAME OVER")
                         .font(.system(size: 48, weight: .black, design: .monospaced))
                         .foregroundColor(.red)
                         .shadow(color: .white, radius: 2, x: 2, y: 2)
                     
+                    // FINAL SCORE
                     VStack(spacing: 8) {
                         Text("SCORE")
                             .font(.system(size: 24, weight: .bold, design: .monospaced))
@@ -178,13 +155,16 @@ struct FITBGameView: View {
                             .stroke(Color.green, lineWidth: 4)
                     )
                     
+                    // RETRO MOTIVATION TEXT
                     Text("PRESS PLAY AGAIN TO RESTART")
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
                         .shadow(color: .black, radius: 1, x: 1, y: 1)
                     
+                    // PLAY AGAIN BUTTON
                     Button(action: {
                         scene.startNewGame()
+                        isPaused = false
                     }) {
                         Text("PLAY AGAIN")
                             .font(.system(size: 20, weight: .black, design: .monospaced))
@@ -206,15 +186,12 @@ struct FITBGameView: View {
         .onAppear {
             gameKitManager.authenticatePlayer()
             setupWordDataManager()
-            NotificationCenter.default.addObserver(forName: .didFITBGameOver, object: nil, queue: .main) { _ in
-                gameManager.submitFinalScoreToLeaderboard(for: gameKitManager)
-            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .didFITBGameOver)) { notification in
             if let finishedGame = notification.object as? FITBGameScene, self.gameManager.isGameOver == true {
                 finishedGame.checkAchievementsAndSubmitScore(
                     for: gameKitManager,
-                    finalScore: finishedGame.score
+                    finalScore: self.gameManager.score,
                 )
             }
         }
@@ -228,7 +205,6 @@ struct FITBGameView: View {
     
     private func togglePause() {
         isPaused.toggle()
-        scene.isPaused = isPaused
         
         if isPaused {
             scene.pauseGame()
@@ -239,7 +215,6 @@ struct FITBGameView: View {
     
     private func restartGame() {
         isPaused = false
-        scene.isPaused = false
         scene.startNewGame()
     }
 }

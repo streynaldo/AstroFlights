@@ -48,9 +48,68 @@ struct STLGameView: View {
     private var gameHud: some View {
         VStack {
             HStack(spacing: 16) {
-                scoreBox
-                wordBox
-                healthBox
+                // SCORE BOX ala FITBGameView
+                HStack {
+                    Image("coin")
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                        .shadow(color: .black, radius: 1, x: 1, y: 1)
+                    Text("\(gameState.score)")
+                        .font(.system(size: 28, weight: .black, design: .monospaced))
+                        .foregroundColor(.yellow)
+                        .shadow(color: .black, radius: 2, x: 2, y: 2)
+                }
+                .padding(8)
+                .background(Color.black.opacity(0.7))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.green, lineWidth: 2)
+                )
+                .cornerRadius(4)
+                // CURRENT WORD ala FITBGameView (pakai TargetWordView)
+                VStack {
+                    if gameState.currentWord.isEmpty {
+                        Text("GET READY!")
+                            .font(.system(size: 28, weight: .black, design: .monospaced))
+                            .tracking(5)
+                            .foregroundColor(.white)
+                            .shadow(color: .black, radius: 2, x: 2, y: 2)
+                    } else {
+                        TargetWordView(
+                            targetWord: gameState.currentWord,
+                            highlightedUntilIndex: gameState.currentLetterIndex
+                        )
+                        .font(.system(size: 28, weight: .black, design: .monospaced))
+                        .foregroundColor(.white)
+                        .shadow(color: .black, radius: 2, x: 2, y: 2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                    }
+                }
+                .padding(8)
+                .background(Color.black.opacity(0.7))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.cyan, lineWidth: 2)
+                )
+                .cornerRadius(4)
+                .frame(maxWidth: .infinity)
+                // HEALTH ala FITBGameView
+                HStack(spacing: 4) {
+                    ForEach(1...5, id: \.self) { heartIndex in
+                        Image(heartIndex <= gameState.lives ? "fullheart" : "deadheart")
+                            .resizable()
+                            .frame(width: 24, height: 24)
+                            .shadow(color: .black, radius: 1, x: 1, y: 1)
+                    }
+                }
+                .padding(8)
+                .background(Color.black.opacity(0.7))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.red, lineWidth: 2)
+                )
+                .cornerRadius(4)
             }
             Spacer()
         }
@@ -68,58 +127,7 @@ struct STLGameView: View {
                     .transition(.scale.combined(with: .opacity))
                     .zIndex(10)
             }
-            
-            if showHighScoreAnimation {
-                Text("NEW RECORD!")
-                    .font(.system(size: 52, weight: .black, design: .rounded))
-                    .foregroundColor(.yellow)
-                    .shadow(color: .black.opacity(0.5), radius: 3, x: 0, y: 3)
-                    .transition(.scale.combined(with: .opacity))
-                    .zIndex(11)
-            }
         }
-    }
-    
-    private var scoreBox: some View {
-        InfoBox(
-            title: "SCORE",
-            value: "\(gameState.score)",
-            titleColor: .green,
-            valueColor: .yellow
-        )
-    }
-    
-    private var wordBox: some View {
-        VStack {
-            Text("WORD")
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundColor(.cyan)
-            
-            TargetWordView(
-                targetWord: gameState.currentWord,
-                highlightedUntilIndex: gameState.currentLetterIndex
-            )
-            .lineLimit(1)
-            .minimumScaleFactor(0.5)
-            
-        }
-        .padding(8)
-        .background(Color.black.opacity(0.7))
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.cyan, lineWidth: 2)
-        )
-        .frame(maxWidth: .infinity)
-    }
-    
-    private var healthBox: some View {
-        InfoBox(
-            title: "HP",
-            value: "\(gameState.lives)",
-            titleColor: .red,
-            valueColor: .red
-        )
     }
     
     private func setupCallbacks() {

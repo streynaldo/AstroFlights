@@ -15,7 +15,7 @@ extension Notification.Name {
 class STLGameState: ObservableObject {
     
     @Published var score: Int = 0
-    @Published var lives: Int = 100
+    @Published var lives: Int = 5
     @Published var currentWord: String = ""
     @Published var currentLetterIndex: Int = 0
     
@@ -76,7 +76,7 @@ class STLGameState: ObservableObject {
         if currentLetterIndex >= currentWord.count {
             isWordOnScreen = false
             
-            score += 150
+            score += 25
             
             checkRealtimeAchievements(for: gameKitManager, currentScore: score)
             scene?.showCoinRewardEffect()
@@ -91,7 +91,7 @@ class STLGameState: ObservableObject {
     
     func skipToNextWord() {
         if isWordOnScreen {
-            lives -= 10
+            lives -= 1
         }
         
         isWordOnScreen = false
@@ -107,11 +107,7 @@ class STLGameState: ObservableObject {
     }
     
     func incorrectAction() {
-        lives -= 5
-        if lives <= 0 {
-            lives = 0
-            gameOver()
-        }
+        score -= 10
     }
     
     private func checkRealtimeAchievements(for manager: GameKitManager, currentScore: Int) {
