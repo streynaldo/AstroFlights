@@ -35,7 +35,7 @@ struct STLGameLayout: View {
                 } else {
                     VStack(spacing: 20) {
                         Text("Word Invaders")
-                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .font(.custom("Born2bSporty FS", size: 40))
                         if let finishedGameState = gameState {
                             Text("Game Over!\nFinal Score: \(finishedGameState.score)")
                                 .font(.title)
