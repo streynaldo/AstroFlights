@@ -95,17 +95,24 @@ struct AchievementCardView: View {
     
     private var cardBackgroundImageName: String {
         if achievement.id.contains("1000") {
-            return "card_1000"
+            return "1000_score_card"
         } else if achievement.id.contains("100") {
-            return "card_100"
+            return "100_score_card"
         } else if achievement.id.contains("personal_record") {
-            return "card_record"
+            return "new_personal_record_card"
         }
         return "achievement_card"
     }
     
     private var circleFrameImageName: String {
-        return achievement.isCompleted ? "circle_yellow" : "circle_gray"
+        if achievement.id.contains("1000") && achievement.isCompleted {
+            return "1000_score_badge_ring"
+        } else if achievement.id.contains("100") && achievement.isCompleted {
+            return "100_score_badge_ring"
+        } else if achievement.id.contains("personal_record") && achievement.isCompleted {
+            return "new_personal_record_badge_ring"
+        }
+        return "locked_badge_ring"
     }
     
     var body: some View {
@@ -133,7 +140,6 @@ struct AchievementCardView: View {
                         .scaledToFit()
                         .frame(width: 80, height: 80)
                 }
-                .padding(.top, 12)
                 
                 Text(achievement.title)
                     .font(.headline)
@@ -156,6 +162,6 @@ struct AchievementCardView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 24)
         }
-        .opacity(achievement.isCompleted ? 1.0 : 0.7)
+        .opacity(achievement.isCompleted ? 1.0 : 0.5)
     }
 }
