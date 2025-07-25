@@ -38,6 +38,7 @@ class ParallaxBackgroundManager {
     private func createCompleteParallaxStrip(scene: SKScene) -> SKNode {
         let container = SKNode()
         var occupiedFrames = [CGRect]()
+        placeAssets(on: container, scene: scene, textureNames: ["spacestation"], count: 2, zPosition: -7, occupiedFrames: &occupiedFrames)
         placeAssets(on: container, scene: scene, textureNames: ["galaxy"], count: 2, zPosition: -9, occupiedFrames: &occupiedFrames)
         placeAssets(on: container, scene: scene, textureNames: ["cloud_1", "cloud_2", "cloud_3"], count: 4, zPosition: -8, occupiedFrames: &occupiedFrames)
         placeAssets(on: container, scene: scene, textureNames: ["cloud_4", "cloud_5", "cloud_6"], count: 4, zPosition: -8, occupiedFrames: &occupiedFrames)
@@ -74,6 +75,7 @@ class ParallaxBackgroundManager {
             let aspectRatio = texture.size().height / texture.size().width
             let nodeWidth = scene.size.width * CGFloat.random(in: 0.25...0.50)
             node.size = CGSize(width: nodeWidth, height: nodeWidth * aspectRatio)
+            node.zRotation = CGFloat.random(in: -0.78...0.78)
             var attempts = 0
             var positionIsSafe = false
             while !positionIsSafe && attempts < 20 {
@@ -102,7 +104,7 @@ class ParallaxBackgroundManager {
         let repeatAction = SKAction.repeatForever(sequence)
         scene.run(repeatAction, withKey: "windEffect")
     }
-
+    
     private func spawnWindParticle() {
         guard let scene = scene else { return }
         let randomNumber = Int.random(in: 1...4)

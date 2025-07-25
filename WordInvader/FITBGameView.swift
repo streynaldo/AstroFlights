@@ -33,11 +33,11 @@ struct FITBGameView: View {
                                 .frame(width: 24, height: 24)
                                 .shadow(color: .black, radius: 1, x: 1, y: 1)
                             Text("\(gameManager.score)")
-                                .font(.system(size: 28, weight: .black, design: .monospaced))
+                                .font(.custom("Born2bSporty FS", size:46))
                                 .foregroundColor(.yellow)
                                 .shadow(color: .black, radius: 2, x: 2, y: 2)
                         }
-                        .padding(8)
+                        .padding(12)
                         .background(Color.black.opacity(0.7))
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)
@@ -48,7 +48,7 @@ struct FITBGameView: View {
                         // CURRENT WORD
                         VStack {
                             Text(gameManager.currentTaskText == "" ? "GET READY!" : gameManager.currentTaskText)
-                                .font(.system(size: 28, weight: .black, design: .monospaced))
+                                .font(.custom("Born2bSporty FS", size:52))
                                 .tracking(5)
                                 .foregroundColor(.white)
                                 .shadow(color: .black, radius: 2, x: 2, y: 2)
@@ -104,7 +104,7 @@ struct FITBGameView: View {
             if isPaused && !gameManager.isGameOver {
                 VStack(spacing: 30) {
                     Text("PAUSED")
-                        .font(.system(size: 48, weight: .black, design: .monospaced))
+                        .font(.custom("Born2bSporty FS", size:90))
                         .foregroundColor(.white)
                         .shadow(color: .black, radius: 2, x: 2, y: 2)
                     
@@ -113,7 +113,7 @@ struct FITBGameView: View {
                             togglePause()
                         }) {
                             Text("RESUME")
-                                .font(.system(size: 20, weight: .black, design: .monospaced))
+                                .font(.custom("Born2bSporty FS", size: 40))
                                 .foregroundColor(.black)
                                 .padding(.vertical, 12)
                                 .padding(.horizontal, 40)
@@ -134,18 +134,18 @@ struct FITBGameView: View {
                 VStack(spacing: 20) {
                     // GAME OVER TITLE
                     Text("GAME OVER")
-                        .font(.system(size: 48, weight: .black, design: .monospaced))
+                        .font(.custom("Born2bSporty FS", size:90))
                         .foregroundColor(.red)
                         .shadow(color: .white, radius: 2, x: 2, y: 2)
                     
                     // FINAL SCORE
                     VStack(spacing: 8) {
                         Text("SCORE")
-                            .font(.system(size: 24, weight: .bold, design: .monospaced))
+                            .font(.custom("Born2bSporty FS", size:60))
                             .foregroundColor(.green)
                         
                         Text("\(gameManager.score)")
-                            .font(.system(size: 64, weight: .black, design: .monospaced))
+                            .font(.custom("Born2bSporty FS", size:110))
                             .foregroundColor(.yellow)
                             .shadow(color: .black, radius: 4, x: 2, y: 2)
                     }
@@ -157,7 +157,7 @@ struct FITBGameView: View {
                     
                     // RETRO MOTIVATION TEXT
                     Text("PRESS PLAY AGAIN TO RESTART")
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .font(.custom("Born2bSporty FS", size:30))
                         .foregroundColor(.white)
                         .shadow(color: .black, radius: 1, x: 1, y: 1)
                     
@@ -167,7 +167,7 @@ struct FITBGameView: View {
                         isPaused = false
                     }) {
                         Text("PLAY AGAIN")
-                            .font(.system(size: 20, weight: .black, design: .monospaced))
+                            .font(.custom("Born2bSporty FS", size:40))
                             .foregroundColor(.black)
                             .padding(.vertical, 12)
                             .padding(.horizontal, 40)

@@ -55,7 +55,7 @@ struct STLGameView: View {
                         .frame(width: 24, height: 24)
                         .shadow(color: .black, radius: 1, x: 1, y: 1)
                     Text("\(gameState.score)")
-                        .font(.system(size: 28, weight: .black, design: .monospaced))
+                        .font(.custom("Born2bSporty FS", size:46))
                         .foregroundColor(.yellow)
                         .shadow(color: .black, radius: 2, x: 2, y: 2)
                 }
@@ -70,7 +70,7 @@ struct STLGameView: View {
                 VStack {
                     if gameState.currentWord.isEmpty {
                         Text("GET READY!")
-                            .font(.system(size: 28, weight: .black, design: .monospaced))
+                            .font(.custom("Born2bSporty FS", size:52))
                             .tracking(5)
                             .foregroundColor(.white)
                             .shadow(color: .black, radius: 2, x: 2, y: 2)
@@ -121,7 +121,7 @@ struct STLGameView: View {
         ZStack {
             if showSuccessAnimation {
                 Text("CORRECT WORD!")
-                    .font(.system(size: 48, weight: .black, design: .monospaced))
+                    .font(.custom("Born2bSporty FS", size:70))
                     .foregroundColor(.green)
                     .shadow(color: .black, radius: 2)
                     .transition(.scale.combined(with: .opacity))
@@ -166,10 +166,10 @@ struct InfoBox: View {
     var body: some View {
         VStack {
             Text(title)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .font(.custom("VTF MisterPixel", size:16))
                 .foregroundColor(titleColor)
             Text(value)
-                .font(.system(size: 28, weight: .black, design: .monospaced))
+                .font(.custom("VTF MisterPixel", size:32))
                 .foregroundColor(valueColor)
         }
         .padding(8)
@@ -186,7 +186,7 @@ struct InfoBox: View {
     let sampleGameState = STLGameState(words: ["PREVIEW", "EXAMPLE"])
     let sampleGameKitManager = GameKitManager()
     
-    sampleGameState.score = 1250
+    sampleGameState.score = 12
     sampleGameState.lives = 85
     sampleGameState.currentWord = "EXAMPLE"
     sampleGameState.currentLetterIndex = 3

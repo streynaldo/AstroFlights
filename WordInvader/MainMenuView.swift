@@ -29,14 +29,13 @@ struct MainMenuView: View {
                     Spacer()
                     
                     // GAME TITLE
-                    VStack(spacing: 10) {
+                    VStack() {
                         Text("WORD")
-                            .font(.system(size: 48, weight: .black, design: .monospaced))
+                            .font(.custom("Born2bSporty FS", size:70))
                             .foregroundColor(.cyan)
                             .shadow(color: .black, radius: 2, x: 2, y: 2)
-                        
                         Text("INVADERS")
-                            .font(.system(size: 48, weight: .black, design: .monospaced))
+                            .font(.custom("Born2bSporty FS", size:70))
                             .foregroundColor(.yellow)
                             .shadow(color: .black, radius: 2, x: 2, y: 2)
                     }
@@ -46,7 +45,7 @@ struct MainMenuView: View {
                     // GAME MODE SELECTION
                     VStack(spacing: 30) {
                         Text("SELECT GAME MODE")
-                            .font(.system(size: 16, weight: .bold, design: .monospaced))
+                            .font(.custom("VTF MisterPixel", size:18))
                             .foregroundColor(.white)
                             .shadow(color: .black, radius: 1, x: 1, y: 1)
                         
@@ -57,11 +56,11 @@ struct MainMenuView: View {
                             }) {
                                 VStack(spacing: 8) {
                                     Text("FILL IN THE BLANKS")
-                                        .font(.system(size: 18, weight: .black, design: .monospaced))
+                                        .font(.custom("Born2bSporty FS", size:26))
                                         .foregroundColor(.black)
                                     
                                     Text("Complete missing letters")
-                                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                        .font(.custom("Born2bSporty FS", size:20))
                                         .foregroundColor(.black)
                                         .opacity(0.8)
                                 }
@@ -81,11 +80,11 @@ struct MainMenuView: View {
                             }) {
                                 VStack(spacing: 8) {
                                     Text("SHOOT THE LETTERS")
-                                        .font(.system(size: 18, weight: .black, design: .monospaced))
+                                        .font(.custom("Born2bSporty FS", size:26))
                                         .foregroundColor(.black)
                                     
                                     Text("Spell words by shooting")
-                                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                        .font(.custom("Born2bSporty FS", size:20))
                                         .foregroundColor(.black)
                                         .opacity(0.8)
                                 }
@@ -105,7 +104,7 @@ struct MainMenuView: View {
                     
                     // RETRO FOOTER TEXT
                     Text("CHOOSE YOUR BATTLE MODE, CAPTAIN!")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .font(.custom("VTF MisterPixel", size:18))
                         .foregroundColor(.white)
                         .shadow(color: .black, radius: 1, x: 1, y: 1)
                     

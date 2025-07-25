@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SpriteKit
 
 struct AchievementsView: View {
     @ObservedObject var gameKitManager: GameKitManager
@@ -20,57 +21,70 @@ struct AchievementsView: View {
     @State private var isLoading = false
     
     var body: some View {
-        ZStack {
-            Color("background_color").ignoresSafeArea()
-            
-            VStack {
-                Picker("Game Mode", selection: $selectedGameMode) {
-                    ForEach(GameMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding()
+        GeometryReader { geometry in
+            ZStack {
+                SpriteView(scene: {
+                    let scene = MainMenuScene()
+                    scene.size = geometry.size
+                    scene.scaleMode = .aspectFill
+                    return scene
+                }())
+                .ignoresSafeArea()
                 
-                if isLoading {
-                    ProgressView {
-                        Text("Fetching Achievements...")
-                            .font(.headline)
-                            .foregroundColor(.white)
+                Color.black.opacity(0.7)
+                    .ignoresSafeArea()
+                
+                VStack {
+                    Picker("Game Mode", selection: $selectedGameMode) {
+                        ForEach(GameMode.allCases) { mode in
+                            Text(mode.rawValue)
+                                .font(.custom("VTF MisterPixel", size:20))
+                                .tag(mode)
+                        }
                     }
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .frame(maxHeight: .infinity)
-                } else if gameKitManager.achievements.isEmpty && isLoading {
-                    emptyStateView(message: "No achievements to show.\nKeep playing to unlock them!")
-                } else {
-                    ScrollView {
-                        LazyVGrid(columns: gridLayout, spacing: 16) {
-                            ForEach(gameKitManager.achievements) { achievement in
-                                AchievementCardView(achievement: achievement)
+                    .pickerStyle(.segmented)
+                    .padding()
+                    
+                    if isLoading {
+                        ProgressView {
+                            Text("Fetching Achievements...")
+                                .font(.custom("VTF MisterPixel", size:20))
+                                .foregroundColor(.white)
+                        }
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .frame(maxHeight: .infinity)
+                    } else if gameKitManager.achievements.isEmpty {
+                        emptyStateView(message: "No achievements to show.\nKeep playing to unlock them!")
+                    } else {
+                        ScrollView {
+                            LazyVGrid(columns: gridLayout, spacing: 16) {
+                                ForEach(gameKitManager.achievements) { achievement in
+                                    AchievementCardView(achievement: achievement)
+                                }
                             }
                         }
                         .padding(.horizontal)
                     }
                 }
             }
+            .onAppear {
+                fetchDataForSelectedMode()
+            }
+            .onChange(of: selectedGameMode) { _, _ in
+                fetchDataForSelectedMode()
+            }
+            .navigationTitle("Achievements")
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .onAppear {
-            fetchDataForSelectedMode()
-            isLoading = false
-        }
-        .onChange(of: selectedGameMode) { _, _ in
-            fetchDataForSelectedMode()
-        }
-        .navigationTitle("Achievements")
-        .navigationBarTitleDisplayMode(.inline)
     }
     
     private func emptyStateView(message: String) -> some View {
         VStack {
             Image(systemName: "star.slash")
                 .font(.largeTitle)
-                .padding(.bottom, 8)
+                .padding(.bottom, 2)
             Text(message)
+                .font(.custom("Born2bSporty FS", size:24))
                 .multilineTextAlignment(.center)
         }
         .foregroundColor(.gray)
@@ -94,38 +108,70 @@ struct AchievementsView: View {
 struct AchievementCardView: View {
     let achievement: Achievement
     
+    private var cardBackgroundImageName: String {
+        if achievement.id.contains("1000") && achievement.isCompleted {
+            return "1000_score_card"
+        } else if achievement.id.contains("100") && achievement.isCompleted {
+            return "100_score_card"
+        } else if achievement.id.contains("personal_record") && achievement.isCompleted {
+            return "new_personal_record_card"
+        }
+        return "locked_achievement_card"
+    }
+    
+    private var circleFrameImageName: String {
+        if achievement.id.contains("1000") && achievement.isCompleted {
+            return "1000_score_badge_ring"
+        } else if achievement.id.contains("100") && achievement.isCompleted {
+            return "100_score_badge_ring"
+        } else if achievement.id.contains("personal_record") && achievement.isCompleted {
+            return "new_personal_record_badge_ring"
+        }
+        return "locked_badge_ring"
+    }
+    
     var body: some View {
-        VStack(spacing: 20) {
-            Group {
-                if let uiImage = achievement.image {
-                    Image(uiImage: uiImage)
+        ZStack(alignment: .center, content: {
+            Image(cardBackgroundImageName)
+                .resizable()
+                .scaledToFill()
+            
+            VStack(spacing: 16) {
+                ZStack {
+                    Group {
+                        if let uiImage = achievement.image {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                        } else {
+                            Image(systemName: "shield.slash")
+                        }
+                    }
+                    .frame(width: 60, height: 60)
+                    .clipShape(Circle())
+                    
+                    Image(circleFrameImageName)
                         .resizable()
                         .scaledToFit()
-                } else {
-                    Image(systemName: "shield.slash")
+                        .frame(width: 80, height: 80)
                 }
+                
+                Text(achievement.title)
+                    .font(.custom("VTF MisterPixel", size:18))
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .padding(.horizontal, 12)
+                
+                Text(achievement.description)
+                    .font(.custom("VTF MisterPixel", size:16))
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
             }
-            .frame(width: 80, height: 80)
-            .clipShape(Circle())
-            .overlay(Circle().stroke(achievement.isCompleted ? Color.yellow : Color.gray, lineWidth: 2))
-            
-            Text(achievement.title)
-                .font(.headline)
-                .foregroundColor(.white)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-            
-            Text(achievement.description)
-                .font(.caption)
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 4)
-        }
-        .frame(height: 220)
-        .frame(maxWidth: .infinity)
-        .padding(10)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(15)
+        })
         .opacity(achievement.isCompleted ? 1.0 : 0.5)
     }
 }
