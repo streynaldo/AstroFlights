@@ -10,12 +10,12 @@ import SpriteKit
 
 struct STLGameView: View {
     
+    
     @ObservedObject var gameState: STLGameState
     @ObservedObject var gameKitManager: GameKitManager
+    @Environment(\.dismiss) private var dismiss
     
     @State private var scene: STLGameScene
-    @State private var showSuccessAnimation = false
-    @State private var showHighScoreAnimation = false
     
     init(gameState: STLGameState, gameKitManager: GameKitManager) {
         self.gameState = gameState
@@ -34,162 +34,212 @@ struct STLGameView: View {
             SpriteView(scene: scene)
                 .ignoresSafeArea()
             
-            gameHud
+            // Tampilkan UI hanya jika game belum berakhir
+            if !gameState.isGameOver {
+                gameHud
+            }
             
-            centerScreenAnimations
+            // Tampilkan overlay Pause jika game dijeda dan belum game over
+            if gameState.isPaused && !gameState.isGameOver {
+                pauseOverlay
+            }
+            
+            // Tampilkan overlay Game Over jika game berakhir
+            if gameState.isGameOver {
+                gameOverOverlay
+            }
         }
         .onAppear {
-            setupCallbacks()
-            gameState.scene = scene
             gameState.startGame()
+        }
+        .onChange(of: gameState.currentWord) {
+            scene.spawnCurrentWord()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .didSTLGameOver)) { _ in
+            gameState.submitFinalScoreToLeaderboard(for: gameKitManager)
         }
     }
     
+    // MARK: - Game HUD View
     private var gameHud: some View {
         VStack {
             HStack(spacing: 16) {
-                // SCORE BOX ala FITBGameView
+                // ... (SCORE BOX tetap sama)
                 HStack {
                     Image("coin")
-                        .resizable()
-                        .frame(width: 24, height: 24)
+                        .resizable().frame(width: 24, height: 24)
                         .shadow(color: .black, radius: 1, x: 1, y: 1)
                     Text("\(gameState.score)")
-                        .font(.custom("Born2bSporty FS", size:46))
+                        .font(.custom("VTF MisterPixel", size: 28))
                         .foregroundColor(.yellow)
                         .shadow(color: .black, radius: 2, x: 2, y: 2)
                 }
                 .padding(8)
                 .background(Color.black.opacity(0.7))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.green, lineWidth: 2)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.green, lineWidth: 2))
+                
+                // ... (CURRENT WORD DISPLAY tetap sama)
+                TargetWordView(
+                    targetWord: gameState.currentWord,
+                    highlightedUntilIndex: gameState.currentLetterIndex
                 )
-                .cornerRadius(4)
-                // CURRENT WORD ala FITBGameView (pakai TargetWordView)
-                VStack {
-                    if gameState.currentWord.isEmpty {
-                        Text("GET READY!")
-                            .font(.custom("Born2bSporty FS", size:52))
-                            .tracking(5)
-                            .foregroundColor(.white)
-                            .shadow(color: .black, radius: 2, x: 2, y: 2)
-                    } else {
-                        TargetWordView(
-                            targetWord: gameState.currentWord,
-                            highlightedUntilIndex: gameState.currentLetterIndex
-                        )
-                        .font(.system(size: 28, weight: .black, design: .monospaced))
-                        .foregroundColor(.white)
-                        .shadow(color: .black, radius: 2, x: 2, y: 2)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                    }
-                }
                 .padding(8)
                 .background(Color.black.opacity(0.7))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.cyan, lineWidth: 2)
-                )
-                .cornerRadius(4)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.cyan, lineWidth: 2))
                 .frame(maxWidth: .infinity)
-                // HEALTH ala FITBGameView
-                HStack(spacing: 4) {
-                    ForEach(1...5, id: \.self) { heartIndex in
-                        Image(heartIndex <= gameState.lives ? "fullheart" : "deadheart")
-                            .resizable()
-                            .frame(width: 24, height: 24)
-                            .shadow(color: .black, radius: 1, x: 1, y: 1)
-                    }
+                
+                // TOMBOL PAUSE BARU
+                Button(action: {
+                    scene.pauseGame()
+                }) {
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(12)
+                        .background(Color.black.opacity(0.7))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white, lineWidth: 2))
                 }
-                .padding(8)
-                .background(Color.black.opacity(0.7))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.red, lineWidth: 2)
-                )
-                .cornerRadius(4)
+                .disabled(gameState.isCountingDown) // Nonaktifkan saat countdown
             }
+            
+            // ... (HEALTH HEARTS tetap sama)
+            HStack(spacing: 4) {
+                ForEach(0..<5, id: \.self) { index in
+                    Image(index < gameState.health ? "fullheart" : "deadheart")
+                        .resizable().frame(width: 24, height: 24)
+                        .shadow(color: .black, radius: 1, x: 1, y: 1)
+                }
+            }
+            .padding(.top, 8)
+            
             Spacer()
         }
         .padding(.top, 50)
         .padding(.horizontal)
     }
     
-    private var centerScreenAnimations: some View {
+    // MARK: - Pause Overlay (MODIFIED)
+    private var pauseOverlay: some View {
         ZStack {
-            if showSuccessAnimation {
-                Text("CORRECT WORD!")
-                    .font(.custom("Born2bSporty FS", size:70))
-                    .foregroundColor(.green)
-                    .shadow(color: .black, radius: 2)
-                    .transition(.scale.combined(with: .opacity))
-                    .zIndex(10)
+            // Layer 1: Background semi-transparan yang menutupi seluruh layar
+            Color.black.opacity(0.6)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    // Optional: bisa dibuat agar tap di luar box akan me-resume game
+                    // scene.resumeGame()
+                }
+            
+            // Layer 2: Konten pop-up
+            VStack(spacing: 30) {
+                Text("PAUSED")
+                    .font(.custom("VTF MisterPixel", size: 48))
+                    .foregroundColor(.white)
+                    .shadow(color: .black, radius: 2, x: 2, y: 2)
+                
+                VStack(spacing: 20) {
+                    Button(action: {
+                        scene.resumeGame()
+                    }) {
+                        Text("RESUME")
+                            .font(.custom("VTF MisterPixel", size: 24))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: 220)
+                            .background(Color.green)
+                            .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
+                    }
+                    
+                    Button(action: {
+                        gameState.submitFinalScoreToLeaderboard(for: gameKitManager)
+                        dismiss()
+                    }) {
+                        Text("MAIN MENU")
+                            .font(.custom("VTF MisterPixel", size: 24))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: 220)
+                            .background(Color.red)
+                            .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
+                    }
+                }
             }
+            .padding(40)
+            .background(Color.black) // Latar belakang hitam pekat untuk box pop-up
+            .overlay(Rectangle().stroke(Color.white.opacity(0.7), lineWidth: 2)) // Border untuk box
         }
     }
     
-    private func setupCallbacks() {
-        gameState.onWordCompleted = {
-            HapticsManager.shared.trigger(.success)
-            withAnimation(.spring()) {
-                showSuccessAnimation = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                withAnimation(.easeOut) {
-                    showSuccessAnimation = false
+    // MARK: - Game Over Overlay (MODIFIED)
+    private var gameOverOverlay: some View {
+        ZStack {
+            // Layer 1: Background semi-transparan yang menutupi seluruh layar
+            Color.black.opacity(0.8)
+                .ignoresSafeArea()
+            
+            // Layer 2: Konten pop-up
+            VStack(spacing: 20) {
+                // GAME OVER TITLE
+                Text("GAME OVER")
+                    .font(.custom("VTF MisterPixel", size: 48))
+                    .foregroundColor(.red)
+                    .shadow(color: .white, radius: 2, x: 2, y: 2)
+                
+                // FINAL SCORE
+                VStack(spacing: 8) {
+                    Text("SCORE")
+                        .font(.custom("VTF MisterPixel", size: 24))
+                        .foregroundColor(.green)
+                    
+                    Text("\(gameState.score)")
+                        .font(.custom("VTF MisterPixel", size: 64))
+                        .foregroundColor(.yellow)
+                        .shadow(color: .black, radius: 4, x: 2, y: 2)
+                }
+                .padding()
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.green, lineWidth: 4)
+                )
+                
+                // RETRO MOTIVATION TEXT
+                Text("PRESS PLAY AGAIN TO RESTART")
+                    .font(.custom("VTF MisterPixel", size: 14))
+                    .foregroundColor(.white)
+                    .shadow(color: .black, radius: 1, x: 1, y: 1)
+                
+                // ACTION BUTTONS
+                VStack(spacing: 15) {
+                    Button(action: {
+                        gameState.resetGame()
+                    }) {
+                        Text("PLAY AGAIN")
+                            .font(.custom("VTF MisterPixel", size: 24))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: 220)
+                            .background(Color.green)
+                            .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
+                    }
+                    
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Text("MAIN MENU")
+                            .font(.custom("VTF MisterPixel", size: 24))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: 220)
+                            .background(Color.red)
+                            .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
+                    }
                 }
             }
-        }
-        
-        gameState.onNewHighScore = {
-            HapticsManager.shared.impact(style: .heavy)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-                    showHighScoreAnimation = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    withAnimation(.easeOut) { showHighScoreAnimation = false }
-                }
-            }
+            .padding(40)
+            .background(Color.black) // Latar belakang hitam pekat untuk box pop-up
+            .overlay(Rectangle().stroke(Color.red.opacity(0.7), lineWidth: 2)) // Border untuk box
         }
     }
-}
-
-struct InfoBox: View {
-    let title: String
-    let value: String
-    let titleColor: Color
-    let valueColor: Color
-    
-    var body: some View {
-        VStack {
-            Text(title)
-                .font(.custom("VTF MisterPixel", size:16))
-                .foregroundColor(titleColor)
-            Text(value)
-                .font(.custom("VTF MisterPixel", size:32))
-                .foregroundColor(valueColor)
-        }
-        .padding(8)
-        .background(Color.black.opacity(0.7))
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(titleColor, lineWidth: 2)
-        )
-    }
-}
-
-#Preview {
-    let sampleGameState = STLGameState(words: ["PREVIEW", "EXAMPLE"])
-    let sampleGameKitManager = GameKitManager()
-    
-    sampleGameState.score = 12
-    sampleGameState.lives = 85
-    sampleGameState.currentWord = "EXAMPLE"
-    sampleGameState.currentLetterIndex = 3
-    
-    return STLGameView(gameState: sampleGameState, gameKitManager: sampleGameKitManager)
 }
