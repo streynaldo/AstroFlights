@@ -58,6 +58,8 @@ class MainMenuScene: SKScene {
         
         var occupiedFrames = [CGRect]()
         
+        placeAssets(on: container, scene: scene, textureNames: ["spacestation"], count: 2, zPosition: -7, occupiedFrames: &occupiedFrames)
+        
         placeAssets(on: container, textureNames: ["galaxy"], count: 2, zPosition: -9, occupiedFrames: &occupiedFrames)
         
         placeAssets(on: container, textureNames: ["cloud_1", "cloud_2", "cloud_3"], count: 4, zPosition: -8, occupiedFrames: &occupiedFrames)

@@ -198,6 +198,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             }
         } else {
             //SALAH
+            createExplosion(at: hit.position)
             let shake = SKAction.sequence([
                 .moveBy(x: 10, y: 0, duration: 0.05),
                 .moveBy(x: -20, y: 0, duration: 0.1),

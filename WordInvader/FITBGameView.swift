@@ -11,6 +11,7 @@ import SwiftData
 struct FITBGameView: View {
     @ObservedObject private var gameManager = FITBGameState.shared
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     
     @State private var scene = FITBGameScene(size: CGSize(width: 400, height: 800))
     @StateObject private var gameKitManager = GameKitManager()
@@ -33,7 +34,7 @@ struct FITBGameView: View {
                                 .frame(width: 24, height: 24)
                                 .shadow(color: .black, radius: 1, x: 1, y: 1)
                             Text("\(gameManager.score)")
-                                .font(.custom("Born2bSporty FS", size:46))
+                                .font(.system(size: 28, weight: .black, design: .monospaced))
                                 .foregroundColor(.yellow)
                                 .shadow(color: .black, radius: 2, x: 2, y: 2)
                         }
@@ -48,7 +49,7 @@ struct FITBGameView: View {
                         // CURRENT WORD
                         VStack {
                             Text(gameManager.currentTaskText == "" ? "GET READY!" : gameManager.currentTaskText)
-                                .font(.custom("Born2bSporty FS", size:52))
+                                .font(.system(size: 28, weight: .black, design: .monospaced))
                                 .tracking(5)
                                 .foregroundColor(.white)
                                 .shadow(color: .black, radius: 2, x: 2, y: 2)
@@ -104,7 +105,7 @@ struct FITBGameView: View {
             if isPaused && !gameManager.isGameOver {
                 VStack(spacing: 30) {
                     Text("PAUSED")
-                        .font(.custom("Born2bSporty FS", size:90))
+                        .font(.system(size: 48, weight: .black, design: .monospaced))
                         .foregroundColor(.white)
                         .shadow(color: .black, radius: 2, x: 2, y: 2)
                     
@@ -113,11 +114,28 @@ struct FITBGameView: View {
                             togglePause()
                         }) {
                             Text("RESUME")
-                                .font(.custom("Born2bSporty FS", size: 40))
+                                .font(.system(size: 20, weight: .black, design: .monospaced))
                                 .foregroundColor(.black)
                                 .padding(.vertical, 12)
-                                .padding(.horizontal, 40)
+                                .frame(maxWidth: 220)
                                 .background(Color.green)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 0)
+                                        .stroke(Color.white, lineWidth: 2)
+                                )
+                                .shadow(color: .white, radius: 0, x: 3, y: 3)
+                        }
+                        Button(action: {
+                            gameManager.setGameOver()
+                            scene.checkAchievementsAndSubmitScore(for: gameKitManager, finalScore: gameManager.score)
+                            dismiss()
+                        }) {
+                            Text("MAIN MENU")
+                                .font(.system(size: 20, weight: .black, design: .monospaced))
+                                .foregroundColor(.black)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: 220)
+                                .background(Color.red)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 0)
                                         .stroke(Color.white, lineWidth: 2)
@@ -134,18 +152,18 @@ struct FITBGameView: View {
                 VStack(spacing: 20) {
                     // GAME OVER TITLE
                     Text("GAME OVER")
-                        .font(.custom("Born2bSporty FS", size:90))
+                        .font(.system(size: 48, weight: .black, design: .monospaced))
                         .foregroundColor(.red)
                         .shadow(color: .white, radius: 2, x: 2, y: 2)
                     
                     // FINAL SCORE
                     VStack(spacing: 8) {
                         Text("SCORE")
-                            .font(.custom("Born2bSporty FS", size:60))
+                            .font(.system(size: 24, weight: .bold, design: .monospaced))
                             .foregroundColor(.green)
                         
                         Text("\(gameManager.score)")
-                            .font(.custom("Born2bSporty FS", size:110))
+                            .font(.system(size: 64, weight: .black, design: .monospaced))
                             .foregroundColor(.yellow)
                             .shadow(color: .black, radius: 4, x: 2, y: 2)
                     }
@@ -157,7 +175,7 @@ struct FITBGameView: View {
                     
                     // RETRO MOTIVATION TEXT
                     Text("PRESS PLAY AGAIN TO RESTART")
-                        .font(.custom("Born2bSporty FS", size:30))
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
                         .shadow(color: .black, radius: 1, x: 1, y: 1)
                     
@@ -167,11 +185,26 @@ struct FITBGameView: View {
                         isPaused = false
                     }) {
                         Text("PLAY AGAIN")
-                            .font(.custom("Born2bSporty FS", size:40))
+                            .font(.system(size: 20, weight: .black, design: .monospaced))
                             .foregroundColor(.black)
                             .padding(.vertical, 12)
-                            .padding(.horizontal, 40)
+                            .frame(maxWidth: 220)
                             .background(Color.green)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 0)
+                                    .stroke(Color.white, lineWidth: 2)
+                            )
+                            .shadow(color: .white, radius: 0, x: 3, y: 3)
+                    }
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Text("MAIN MENU")
+                            .font(.system(size: 20, weight: .black, design: .monospaced))
+                            .foregroundColor(.black)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: 220)
+                            .background(Color.red)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 0)
                                     .stroke(Color.white, lineWidth: 2)
