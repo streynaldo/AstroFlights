@@ -94,7 +94,7 @@ struct STLGameView: View {
                 Button(action: {
                     scene.pauseGame()
                 }) {
-                    Image(systemName: "pause.fill")
+                    Image(systemName: gameState.isPaused ? "play.fill" : "pause.fill")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)
                         .padding(12)
@@ -127,10 +127,6 @@ struct STLGameView: View {
             // Layer 1: Background semi-transparan yang menutupi seluruh layar
             Color.black.opacity(0.6)
                 .ignoresSafeArea()
-                .onTapGesture {
-                    // Optional: bisa dibuat agar tap di luar box akan me-resume game
-                    // scene.resumeGame()
-                }
             
             // Layer 2: Konten pop-up
             VStack(spacing: 30) {
@@ -149,6 +145,10 @@ struct STLGameView: View {
                             .padding(.vertical, 12)
                             .frame(maxWidth: 220)
                             .background(Color.green)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 0)
+                                    .stroke(Color.white, lineWidth: 2)
+                            )
                             .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
                     }
                     
@@ -162,6 +162,10 @@ struct STLGameView: View {
                             .padding(.vertical, 12)
                             .frame(maxWidth: 220)
                             .background(Color.red)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 0)
+                                    .stroke(Color.white, lineWidth: 2)
+                            )
                             .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
                     }
                 }
@@ -216,30 +220,58 @@ struct STLGameView: View {
                         gameState.resetGame()
                     }) {
                         Text("PLAY AGAIN")
-                            .font(.custom("VTF MisterPixel", size: 24))
-                            .foregroundColor(.white)
+                            .font(.custom("VTF MisterPixel", size: 20))
+                            .fontWeight(.black)
+                            .foregroundColor(.black)
                             .padding(.vertical, 12)
                             .frame(maxWidth: 220)
                             .background(Color.green)
-                            .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 0)
+                                    .stroke(Color.white, lineWidth: 2)
+                            )
+                            .shadow(color: .white, radius: 0, x: 3, y: 3)
                     }
                     
                     Button(action: {
                         dismiss()
                     }) {
                         Text("MAIN MENU")
-                            .font(.custom("VTF MisterPixel", size: 24))
-                            .foregroundColor(.white)
+                            .font(.custom("VTF MisterPixel", size: 20))
+                            .fontWeight(.black)
+                            .foregroundColor(.black)
                             .padding(.vertical, 12)
                             .frame(maxWidth: 220)
                             .background(Color.red)
-                            .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 0)
+                                    .stroke(Color.white, lineWidth: 2)
+                            )
+                            .shadow(color: .white, radius: 0, x: 3, y: 3)
                     }
                 }
             }
             .padding(40)
             .background(Color.black) // Latar belakang hitam pekat untuk box pop-up
             .overlay(Rectangle().stroke(Color.red.opacity(0.7), lineWidth: 2)) // Border untuk box
+        }
+    }
+}
+
+struct TargetWordView: View {
+    let targetWord: String
+    let highlightedUntilIndex: Int
+    
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(Array(targetWord.enumerated()), id: \.offset) { index, character in
+                Text(String(character))
+                    .font(.custom("VTF MisterPixel", size: 28))
+                    .tracking(5)
+                    .foregroundColor(index < highlightedUntilIndex ? .yellow : .white)
+                    .shadow(color: .black.opacity(0.5), radius: 2, x: 2, y: 2)
+                    .transition(.opacity)
+            }
         }
     }
 }

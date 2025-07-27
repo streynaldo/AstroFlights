@@ -33,7 +33,8 @@ class STLGameState: ObservableObject, Identifiable {
     private var personalHighScore: Int
     private var reportedAchievements: Set<String> = []
     private var isWordOnScreen: Bool = false // Variabel kontrol kunci
-    
+    private let soundManager = SoundManager.shared
+
     init(words: [String]) {
         self.wordList = words.shuffled()
         self.personalHighScore = UserDefaults.standard.integer(forKey: "personalHighScore_STL")

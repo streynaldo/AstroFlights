@@ -105,18 +105,107 @@ struct FITBGameView: View {
             
             // PAUSE OVERLAY
             if isPaused && !gameManager.isGameOver {
-                VStack(spacing: 30) {
-                    Text("PAUSED")
-                        .font(.custom("VTF MisterPixel", size: 48))
-                        .fontWeight(.black)
-                        .foregroundColor(.white)
-                        .shadow(color: .black, radius: 2, x: 2, y: 2)
+                ZStack {
+                    // Layer 1: Background semi-transparan yang menutupi seluruh layar
+                    Color.black.opacity(0.6)
+                        .ignoresSafeArea()
+                    VStack(spacing: 30) {
+                        Text("PAUSED")
+                            .font(.custom("VTF MisterPixel", size: 48))
+                            .fontWeight(.black)
+                            .foregroundColor(.white)
+                            .shadow(color: .black, radius: 2, x: 2, y: 2)
+                        
+                        VStack(spacing: 20) {
+                            Button(action: {
+                                togglePause()
+                            }) {
+                                Text("RESUME")
+                                    .font(.custom("VTF MisterPixel", size: 20))
+                                    .fontWeight(.black)
+                                    .foregroundColor(.black)
+                                    .padding(.vertical, 12)
+                                    .frame(maxWidth: 220)
+                                    .background(Color.green)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 0)
+                                            .stroke(Color.white, lineWidth: 2)
+                                    )
+                                    .shadow(color: .white, radius: 0, x: 3, y: 3)
+                            }
+                            Button(action: {
+                                gameManager.setGameOver()
+                                scene.checkAchievementsAndSubmitScore(for: gameKitManager, finalScore: gameManager.score)
+                                dismiss()
+                            }) {
+                                Text("MAIN MENU")
+                                    .font(.custom("VTF MisterPixel", size: 20))
+                                    .fontWeight(.black)
+                                    .foregroundColor(.black)
+                                    .padding(.vertical, 12)
+                                    .frame(maxWidth: 220)
+                                    .background(Color.red)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 0)
+                                            .stroke(Color.white, lineWidth: 2)
+                                    )
+                                    .shadow(color: .white, radius: 0, x: 3, y: 3)
+                            }
+                        }
+                    }
+                    .padding(40)
+                    .background(Color.black) // Latar belakang hitam pekat untuk box pop-up
+                    .overlay(Rectangle().stroke(Color.white.opacity(0.7), lineWidth: 2)) // Border untuk box
                     
+                }
+                
+            }
+            
+            if gameManager.isGameOver {
+                ZStack {
+                    // Layer 1: Background semi-transparan yang menutupi seluruh layar
+                    Color.black.opacity(0.6)
+                        .ignoresSafeArea()
                     VStack(spacing: 20) {
+                        // GAME OVER TITLE
+                        Text("GAME OVER")
+                            .font(.custom("VTF MisterPixel", size: 48))
+                            .fontWeight(.black)
+                            .foregroundColor(.red)
+                            .shadow(color: .white, radius: 2, x: 2, y: 2)
+                        
+                        // FINAL SCORE
+                        VStack(spacing: 8) {
+                            Text("SCORE")
+                                .font(.custom("VTF MisterPixel", size: 24))
+                                .fontWeight(.bold)
+                                .foregroundColor(.green)
+                            
+                            Text("\(gameManager.score)")
+                                .font(.custom("VTF MisterPixel", size: 64))
+                                .fontWeight(.black)
+                                .foregroundColor(.yellow)
+                                .shadow(color: .black, radius: 4, x: 2, y: 2)
+                        }
+                        .padding()
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.green, lineWidth: 4)
+                        )
+                        
+                        // RETRO MOTIVATION TEXT
+                        Text("PRESS PLAY AGAIN TO RESTART")
+                            .font(.custom("VTF MisterPixel", size: 14))
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .shadow(color: .black, radius: 1, x: 1, y: 1)
+                        
+                        // PLAY AGAIN BUTTON
                         Button(action: {
-                            togglePause()
+                            scene.startNewGame()
+                            isPaused = false
                         }) {
-                            Text("RESUME")
+                            Text("PLAY AGAIN")
                                 .font(.custom("VTF MisterPixel", size: 20))
                                 .fontWeight(.black)
                                 .foregroundColor(.black)
@@ -130,8 +219,6 @@ struct FITBGameView: View {
                                 .shadow(color: .white, radius: 0, x: 3, y: 3)
                         }
                         Button(action: {
-                            gameManager.setGameOver()
-                            scene.checkAchievementsAndSubmitScore(for: gameKitManager, finalScore: gameManager.score)
                             dismiss()
                         }) {
                             Text("MAIN MENU")
@@ -148,83 +235,10 @@ struct FITBGameView: View {
                                 .shadow(color: .white, radius: 0, x: 3, y: 3)
                         }
                     }
+                    .padding(40)
+                    .background(Color.black) // Latar belakang hitam pekat untuk box pop-up
+                    .overlay(Rectangle().stroke(Color.red.opacity(0.7), lineWidth: 2)) // Border untuk box
                 }
-                .padding(40)
-                .background(Color.black.opacity(0.9).ignoresSafeArea())
-            }
-            
-            if gameManager.isGameOver {
-                VStack(spacing: 20) {
-                    // GAME OVER TITLE
-                    Text("GAME OVER")
-                        .font(.custom("VTF MisterPixel", size: 48))
-                        .fontWeight(.black)
-                        .foregroundColor(.red)
-                        .shadow(color: .white, radius: 2, x: 2, y: 2)
-                    
-                    // FINAL SCORE
-                    VStack(spacing: 8) {
-                        Text("SCORE")
-                            .font(.custom("VTF MisterPixel", size: 24))
-                            .fontWeight(.bold)
-                            .foregroundColor(.green)
-                        
-                        Text("\(gameManager.score)")
-                            .font(.custom("VTF MisterPixel", size: 64))
-                            .fontWeight(.black)
-                            .foregroundColor(.yellow)
-                            .shadow(color: .black, radius: 4, x: 2, y: 2)
-                    }
-                    .padding()
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.green, lineWidth: 4)
-                    )
-                    
-                    // RETRO MOTIVATION TEXT
-                    Text("PRESS PLAY AGAIN TO RESTART")
-                        .font(.custom("VTF MisterPixel", size: 14))
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .shadow(color: .black, radius: 1, x: 1, y: 1)
-                    
-                    // PLAY AGAIN BUTTON
-                    Button(action: {
-                        scene.startNewGame()
-                        isPaused = false
-                    }) {
-                        Text("PLAY AGAIN")
-                            .font(.custom("VTF MisterPixel", size: 20))
-                            .fontWeight(.black)
-                            .foregroundColor(.black)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: 220)
-                            .background(Color.green)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 0)
-                                    .stroke(Color.white, lineWidth: 2)
-                            )
-                            .shadow(color: .white, radius: 0, x: 3, y: 3)
-                    }
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Text("MAIN MENU")
-                            .font(.custom("VTF MisterPixel", size: 20))
-                            .fontWeight(.black)
-                            .foregroundColor(.black)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: 220)
-                            .background(Color.red)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 0)
-                                    .stroke(Color.white, lineWidth: 2)
-                            )
-                            .shadow(color: .white, radius: 0, x: 3, y: 3)
-                    }
-                }
-                .padding(40)
-                .background(Color.black.opacity(0.95).ignoresSafeArea())
             }
         }
         .onAppear {

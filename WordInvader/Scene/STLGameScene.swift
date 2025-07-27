@@ -256,12 +256,14 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             node.isPaused = true
         }
         
+        soundManager.stopBGM()
         gameState.isPaused = true
     }
     
     func resumeGame() {
         guard let gameState = gameState else { return }
         
+        soundManager.playBGM(named: "bgm.mp3", on: self)
         gameState.isPaused = false
         startCountdown()
     }
@@ -282,7 +284,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         let countdownLabel = SKLabelNode(text: "3")
         countdownLabel.fontSize = 80
         countdownLabel.fontColor = .white
-        countdownLabel.fontName = "Courier-Bold"
+        countdownLabel.fontName = "Born2bSporty FS"
         countdownLabel.horizontalAlignmentMode = .center
         countdownLabel.verticalAlignmentMode = .center
         countdownLabel.position = .zero
