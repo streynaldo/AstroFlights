@@ -89,7 +89,7 @@ final class GameKitManager: NSObject, ObservableObject, GKGameCenterControllerDe
                 result[achievement.identifier] = achievement
             }
             
-            let finalAchievements: [Achievement] = try await withThrowingTaskGroup(of: Achievement?.self, returning: [Achievement].self) { group in
+            var fetchedAchievements: [Achievement] = try await withThrowingTaskGroup(of: Achievement?.self, returning: [Achievement].self) { group in
                 for desc in allAchievementDescriptions {
                     group.addTask {
                         if let keyword = keyword, !desc.identifier.contains(keyword) {
@@ -111,8 +111,33 @@ final class GameKitManager: NSObject, ObservableObject, GKGameCenterControllerDe
                 return results
             }
             
+            let desiredOrder: [String]
+            if keyword == "sort_the_letters" {
+                desiredOrder = [
+                    "100_score_sort_the_letters",
+                    "1000_score_sort_the_letters",
+                    "new_personal_record_sort_the_letters"
+                ]
+            } else {
+                desiredOrder = [
+                    "100_score_fill_in_the_blank",
+                    "1000_score_fill_in_the_blank",
+                    "new_personal_record_fill_in_the_blank"
+                ]
+            }
+            
+            fetchedAchievements.sort { ach1, ach2 in
+                guard let firstIndex = desiredOrder.firstIndex(of: ach1.id) else {
+                    return false
+                }
+                guard let secondIndex = desiredOrder.firstIndex(of: ach2.id) else {
+                    return true
+                }
+                return firstIndex < secondIndex
+            }
+            
             await MainActor.run {
-                self.achievements = finalAchievements
+                self.achievements = fetchedAchievements
             }
         } catch {
             print("Error fetching achievements: \(error.localizedDescription)")

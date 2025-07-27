@@ -12,44 +12,47 @@ extension Notification.Name {
     static let didSTLGameOver = Notification.Name("didSTLGameOver")
 }
 
-class STLGameState: ObservableObject {
+class STLGameState: ObservableObject, Identifiable {
     
+    // MARK: - Published Properties for SwiftUI View
     @Published var score: Int = 0
-    @Published var lives: Int = 100
+    @Published var health: Int = 5
     @Published var currentWord: String = ""
     @Published var currentLetterIndex: Int = 0
+    @Published var isGameOver: Bool = false
+    @Published var isPaused: Bool = false
+    @Published var isCountingDown: Bool = false
     
-    var isWordOnScreen: Bool = false
-    var isGameOver: Bool = false
-    
-    weak var scene: STLGameScene?
+    // MARK: - Callbacks for View
     var onWordCompleted: (() -> Void)?
     var onNewHighScore: (() -> Void)?
     
+    // MARK: - Private Properties
     private var wordList: [String]
     private var currentWordIndexInList: Int = -1
-    private var personalHighScore: Int = 0
-    
+    private var personalHighScore: Int
     private var reportedAchievements: Set<String> = []
-    
+    private var isWordOnScreen: Bool = false // Variabel kontrol kunci
+    private let soundManager = SoundManager.shared
+
     init(words: [String]) {
         self.wordList = words.shuffled()
         self.personalHighScore = UserDefaults.standard.integer(forKey: "personalHighScore_STL")
     }
     
-    private func gameOver() {
-        if !isGameOver {
-            isGameOver = true
-            isWordOnScreen = false
-            
-            scene?.cleanupScene()
-            
-            NotificationCenter.default.post(name: .didSTLGameOver, object: self)
-            print("Game Over! Final Score: \(score). Notification sent.")
-        }
+    // MARK: - Game Flow
+    func startGame() {
+        resetGame()
     }
     
-    func startGame() {
+    func resetGame() {
+        score = 0
+        health = 5
+        currentWordIndexInList = -1
+        isGameOver = false
+        isPaused = false
+        isCountingDown = false
+        reportedAchievements.removeAll()
         nextWord()
     }
     
@@ -59,60 +62,72 @@ class STLGameState: ObservableObject {
         currentWordIndexInList += 1
         if currentWordIndexInList >= wordList.count {
             print("Congratulations! You've completed all words.")
-            gameOver()
+            endGame()
             return
         }
         
         currentWord = wordList[currentWordIndexInList]
         currentLetterIndex = 0
-        
-        isWordOnScreen = true
-        scene?.spawnNextWord()
+        isWordOnScreen = true // Tandai bahwa kata baru seharusnya ada di layar
     }
+    
+    private func endGame() {
+        if !isGameOver {
+            isGameOver = true
+            isWordOnScreen = false
+            print("Game Over! Final Score: \(score).")
+            NotificationCenter.default.post(name: .didSTLGameOver, object: self)
+        }
+    }
+    
+    // MARK: - Game Actions
     
     func correctLetterShot(gameKitManager: GameKitManager) {
         currentLetterIndex += 1
         
         if currentLetterIndex >= currentWord.count {
-            isWordOnScreen = false
-            
-            score += 150
-            
+            score += 25
             checkRealtimeAchievements(for: gameKitManager, currentScore: score)
-            scene?.showCoinRewardEffect()
-            
             onWordCompleted?()
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            isWordOnScreen = false // Kata sudah tidak aktif lagi
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 self.nextWord()
             }
         }
     }
     
-    func skipToNextWord() {
-        if isWordOnScreen {
-            lives -= 10
-        }
-        
-        isWordOnScreen = false
-        
-        if lives <= 0 {
-            lives = 0
-            gameOver()
-        } else {
-            DispatchQueue.main.async {
-                self.nextWord()
-            }
+    func incorrectLetterShot() {
+        score = max(0, score - 10)
+    }
+    
+    func obstacleMissedOrHitPlayer() {
+        health -= 1
+        if health <= 0 {
+            health = 0
+            endGame()
         }
     }
     
-    func incorrectAction() {
-        lives -= 5
-        if lives <= 0 {
-            lives = 0
-            gameOver()
+    func wordMissed() {
+        // HANYA panggil jika kita memang mengharapkan ada kata di layar
+        guard !isGameOver, isWordOnScreen else { return }
+        
+        health -= 1
+        isWordOnScreen = false // Kata sudah dianggap hilang
+        
+        if health <= 0 {
+            health = 0
+            endGame()
+            return
         }
+        
+        // Langsung lanjut ke kata berikutnya setelah penalti
+        nextWord()
     }
+    
+    // MARK: - GameKit & Achievements
     
     private func checkRealtimeAchievements(for manager: GameKitManager, currentScore: Int) {
         let score100ID = "100_score_sort_the_letters"
@@ -141,8 +156,8 @@ class STLGameState: ObservableObject {
         }
     }
     
-    func submitFinalScoreToLeaderboard(for manager: GameKitManager, finalScore: Int) {
-        manager.submitScore(finalScore, to: "sort_the_letters_leaderboard")
+    func submitFinalScoreToLeaderboard(for manager: GameKitManager) {
+        manager.submitScore(score, to: "sort_the_letters_leaderboard")
     }
     
     private func saveHighScoreToDevice() {
