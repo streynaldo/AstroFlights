@@ -64,12 +64,6 @@ struct STLGameLayout: View {
             }
             
             .preferredColorScheme(.dark)
-            .onAppear {
-                gameKitManager.authenticatePlayer()
-                NotificationCenter.default.addObserver(forName: .didSTLGameOver, object: nil, queue: .main) { _ in
-                    isGameActive = false
-                }
-            }
         }
     }
     

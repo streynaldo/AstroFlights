@@ -33,12 +33,12 @@ struct MainMenuView: View {
                         // GAME TITLE
                         VStack(spacing: 10) {
                             Text("WORD")
-                                .font(.system(size: 48, weight: .black, design: .monospaced))
+                                .font(.custom("VTF MisterPixel", size:48))
                                 .foregroundColor(.cyan)
                                 .shadow(color: .black, radius: 2, x: 2, y: 2)
                             
                             Text("INVADERS")
-                                .font(.system(size: 48, weight: .black, design: .monospaced))
+                                .font(.custom("VTF MisterPixel", size:48))
                                 .foregroundColor(.yellow)
                                 .shadow(color: .black, radius: 2, x: 2, y: 2)
                         }
@@ -48,7 +48,7 @@ struct MainMenuView: View {
                         // GAME MODE SELECTION
                         VStack(spacing: 30) {
                             Text("SELECT GAME MODE")
-                                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                                .font(.custom("VTF MisterPixel", size:16))
                                 .foregroundColor(.white)
                                 .shadow(color: .black, radius: 1, x: 1, y: 1)
                             
@@ -59,11 +59,11 @@ struct MainMenuView: View {
                                 }) {
                                     VStack(spacing: 8) {
                                         Text("FILL IN THE BLANKS")
-                                            .font(.system(size: 18, weight: .black, design: .monospaced))
+                                            .font(.custom("VTF MisterPixel", size:18))
                                             .foregroundColor(.black)
                                         
                                         Text("Complete missing letters")
-                                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                            .font(.custom("VTF MisterPixel", size:12))
                                             .foregroundColor(.black)
                                             .opacity(0.8)
                                     }
@@ -84,11 +84,11 @@ struct MainMenuView: View {
                                 }) {
                                     VStack(spacing: 8) {
                                         Text("SHOOT THE LETTERS")
-                                            .font(.system(size: 18, weight: .black, design: .monospaced))
+                                            .font(.custom("VTF MisterPixel", size:18))
                                             .foregroundColor(.black)
                                         
                                         Text("Spell words by shooting")
-                                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                            .font(.custom("VTF MisterPixel", size:12))
                                             .foregroundColor(.black)
                                             .opacity(0.8)
                                     }
@@ -106,7 +106,7 @@ struct MainMenuView: View {
                                 // LEADERBOARD BUTTON
                                 NavigationLink(destination: LeaderboardView(gameKitManager: gameKitManager, stlLeaderboardID: "sort_the_letters_leaderboard", fitbLeaderboardID: "fill_in_the_blank_leaderboard")) {
                                     Text("LEADERBOARD")
-                                        .font(.system(size: 18, weight: .black, design: .monospaced))
+                                        .font(.custom("VTF MisterPixel", size:18))
                                         .foregroundColor(.black)
                                         .padding(.vertical, 14)
                                         .padding(.horizontal, 30)
@@ -122,7 +122,7 @@ struct MainMenuView: View {
                                 // ACHIEVEMENTS BUTTON
                                 NavigationLink(destination: AchievementsView(gameKitManager: gameKitManager, stlAchievementFilter: "sort_the_letters", fitbAchievementFilter: "fill_in_the_blank")) {
                                     Text("ACHIEVEMENTS")
-                                        .font(.system(size: 18, weight: .black, design: .monospaced))
+                                        .font(.custom("VTF MisterPixel", size:18))
                                         .foregroundColor(.black)
                                         .padding(.vertical, 14)
                                         .padding(.horizontal, 30)
@@ -141,7 +141,7 @@ struct MainMenuView: View {
                         
                         // RETRO FOOTER TEXT
                         Text("CHOOSE YOUR BATTLE MODE, CAPTAIN!")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .font(.custom("VTF MisterPixel", size:12))
                             .foregroundColor(.white)
                             .shadow(color: .black, radius: 1, x: 1, y: 1)
                         
@@ -156,8 +156,11 @@ struct MainMenuView: View {
                 FITBGameView()
             }
             .fullScreenCover(isPresented: $showSTLGame) {
-                STLGameLayout()
+//                STLGameView()
             }
+        }
+        .onAppear() {
+            gameKitManager.authenticatePlayer()
         }
     }
 }

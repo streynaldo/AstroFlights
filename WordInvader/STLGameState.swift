@@ -108,6 +108,9 @@ class STLGameState: ObservableObject {
     
     func incorrectAction() {
         score -= 10
+        if score < 0 {
+            score = 0
+        }
     }
     
     private func checkRealtimeAchievements(for manager: GameKitManager, currentScore: Int) {

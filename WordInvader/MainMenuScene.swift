@@ -13,6 +13,7 @@ class MainMenuScene: SKScene {
     private var spaceship: SKSpriteNode!
     private var backgroundMusic: SKAudioNode?
     private var windAnimation: SKAction?
+    private var parallaxManager: ParallaxBackgroundManager?
     
     let spaceshipIdle = SKTexture(imageNamed: "spaceship_idle")
     let spaceshipLeft = SKTexture(imageNamed: "spaceship_left")
@@ -26,108 +27,13 @@ class MainMenuScene: SKScene {
     private let shootSound = SKAction.playSoundFileNamed("shoot.mp3", waitForCompletion: false)
     
     override func didMove(to view: SKView) {
-        setupBackground()
+        parallaxManager = ParallaxBackgroundManager(scene: self)
+        parallaxManager?.setupParallaxBackground()
+        parallaxManager?.setupFallingWindEffect()
         setupSpaceship()
 //        setupAudio()
         startSpaceshipMovement()
         startRandomShooting()
-    }
-    
-    private func setupBackground() {
-        let background = SKSpriteNode(imageNamed: "background")
-        background.position = CGPoint(x: size.width/2, y: size.height/2)
-        background.zPosition = -1
-        background.size = size
-        addChild(background)
-        
-        // Setup parallax background seperti FITBGameScene
-        setupParallaxBackground()
-    }
-    
-    private func setupParallaxBackground() {
-        for i in 0...1 {
-            let strip = createCompleteParallaxStrip()
-            strip.position = CGPoint(x: 0, y: self.size.height * CGFloat(i))
-            strip.name = "parallax_strip"
-            addChild(strip)
-        }
-    }
-    
-    private func createCompleteParallaxStrip() -> SKNode {
-        let container = SKNode()
-        
-        var occupiedFrames = [CGRect]()
-        
-        placeAssets(on: container, scene: scene, textureNames: ["spacestation"], count: 2, zPosition: -7, occupiedFrames: &occupiedFrames)
-        
-        placeAssets(on: container, textureNames: ["galaxy"], count: 2, zPosition: -9, occupiedFrames: &occupiedFrames)
-        
-        placeAssets(on: container, textureNames: ["cloud_1", "cloud_2", "cloud_3"], count: 4, zPosition: -8, occupiedFrames: &occupiedFrames)
-        
-        placeAssets(on: container, textureNames: ["cloud_4", "cloud_5", "cloud_6"], count: 4, zPosition: -8, occupiedFrames: &occupiedFrames)
-        
-        placeStars(on: container, count: 50, zPosition: -7)
-        
-        return container
-    }
-    
-    private func placeStars(on container: SKNode, count: Int, zPosition: CGFloat) {
-        for _ in 0..<count {
-            let starNumber = Int.random(in: 1...5)
-            let star = SKSpriteNode(imageNamed: "star_\(starNumber)")
-            
-            star.position = CGPoint(x: .random(in: 0...self.size.width), y: .random(in: 0...self.size.height))
-            
-            star.setScale(.random(in: 0.05...0.2))
-            
-            star.alpha = .random(in: 0.4...1.0)
-            star.zPosition = zPosition
-            container.addChild(star)
-        }
-    }
-    
-    private func placeAssets(on container: SKNode, textureNames: [String], count: Int, zPosition: CGFloat, occupiedFrames: inout [CGRect]) {
-        for _ in 0..<count {
-            let textureName = textureNames.randomElement()!
-            let node = SKSpriteNode(imageNamed: textureName)
-            
-            let aspectRatio = node.texture!.size().height / node.texture!.size().width
-            let nodeWidth = self.size.width * CGFloat.random(in: 0.25...0.50)
-            node.size = CGSize(width: nodeWidth, height: nodeWidth * aspectRatio)
-            
-            var attempts = 0
-            var positionIsSafe = false
-            
-            while !positionIsSafe && attempts < 20 {
-                let xPos = CGFloat.random(in: 0...self.size.width)
-                let yPos = CGFloat.random(in: 0...self.size.height)
-                node.position = CGPoint(x: xPos, y: yPos)
-                
-                let nodeFrameWithPadding = node.frame.insetBy(dx: -20, dy: -20)
-                positionIsSafe = !occupiedFrames.contains { $0.intersects(nodeFrameWithPadding) }
-                attempts += 1
-            }
-            
-            if positionIsSafe {
-                occupiedFrames.append(node.frame)
-                node.zPosition = zPosition
-                container.addChild(node)
-            }
-        }
-    }
-    
-    override func update(_ currentTime: TimeInterval) {
-        moveBackgroundStrip(speed: 0.3)
-        cleanupBullets()
-    }
-    
-    private func moveBackgroundStrip(speed: CGFloat) {
-        self.enumerateChildNodes(withName: "parallax_strip") { (node, stop) in
-            node.position.y -= speed
-            if node.position.y < -self.size.height {
-                node.position.y += self.size.height * 2
-            }
-        }
     }
     
     private func setupSpaceship() {
@@ -137,18 +43,7 @@ class MainMenuScene: SKScene {
         spaceship.size = CGSize(width: 60, height: 70)
         spaceship.position = CGPoint(x: size.width / 2, y: 100)
         spaceship.zPosition = 5
-        
-        // Wind animation
-        let windNode = SKSpriteNode(texture: SKTexture(imageNamed: "spaceship_wind_1"))
-        windNode.size = CGSize(width: 70, height: 75)
-        windNode.position = CGPoint(x: 0, y: 3)
-        windNode.zPosition = -1
-        windNode.alpha = 0.35
-        if let windAnimation = self.windAnimation {
-            windNode.run(windAnimation)
-        }
-        
-        spaceship.addChild(windNode)
+
         addChild(spaceship)
     }
     
@@ -232,6 +127,15 @@ class MainMenuScene: SKScene {
         let sequence = SKAction.sequence([moveUp, remove])
         
         bullet.run(sequence)
+    }
+    
+    private func moveBackgroundStrip(speed: CGFloat) {
+        parallaxManager?.moveBackgroundStrip(speed: speed)
+    }
+    
+    override func update(_ currentTime: TimeInterval) {
+        moveBackgroundStrip(speed: 0.3)
+        cleanupBullets()
     }
     
     private func cleanupBullets() {

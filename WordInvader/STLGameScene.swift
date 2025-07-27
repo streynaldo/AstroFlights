@@ -101,41 +101,6 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         addChild(brokenHeart)
     }
     
-//    private func setupFallingWindEffect() {
-//        let createWindParticle = SKAction.run { [weak self] in
-//            self?.spawnWindParticle()
-//        }
-//        let wait = SKAction.wait(forDuration: 0.08, withRange: 0.1)
-//
-//        let sequence = SKAction.sequence([createWindParticle, wait])
-//        let repeatForever = SKAction.repeatForever(sequence)
-//
-//        run(repeatForever, withKey: "windSpawner")
-//    }
-    
-//    private func spawnWindParticle() {
-//        let windImageNumber = Int.random(in: 1...4)
-//        let windNode = SKSpriteNode(imageNamed: "spaceship_wind_\(windImageNumber)")
-//
-//        let randomX = CGFloat.random(in: 0...size.width)
-//        windNode.position = CGPoint(x: randomX, y: self.size.height + 100)
-//
-//        windNode.size = CGSize(width: 3, height: 60)
-//
-//        windNode.alpha = CGFloat.random(in: 0.2...0.5)
-//        windNode.zRotation = 0
-//        windNode.zPosition = 5
-//
-//        let destinationY = -100.0
-//        let randomDuration = TimeInterval.random(in: 2.0...3.0)
-//        let moveAction = SKAction.moveTo(y: destinationY, duration: randomDuration)
-//
-//        let removeAction = SKAction.removeFromParent()
-//        windNode.run(SKAction.sequence([moveAction, removeAction]))
-//
-//        addChild(windNode)
-//    }
-//
     private func setupPlayer() {
         player = SpaceshipFactory.createSpaceship(position: CGPoint(x: size.width / 2, y: 100))
         player.size = CGSize(width: 60, height: 70)
