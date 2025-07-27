@@ -14,6 +14,7 @@ struct MainMenuView: View {
     
     // State untuk mengelola game yang aktif
     @State private var activeSTLGameState: STLGameState?
+    @State private var activeFITBGameState: FITBGameState?
     @State private var showFITBGame = false
     
     // Manager yang bisa dibagikan
@@ -50,7 +51,10 @@ struct MainMenuView: View {
                             
                             VStack(spacing: 20) {
                                 // FILL IN THE BLANKS BUTTON
-                                Button(action: { showFITBGame = true }) {
+                                Button(action: {
+                                    FITBGameState.shared.reset()
+                                    showFITBGame = true
+                                }) {
                                     MenuButtonContent(title: "FILL IN THE BLANKS", subtitle: "Complete missing letters", color: .green)
                                 }
                                 

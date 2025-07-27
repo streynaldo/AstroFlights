@@ -104,10 +104,26 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
                     gameManager.score = 0
                 }
                 gameManager.streak = 0
+                
+                // Set task as complete to prevent reset when new obstacles are created
+                currentTask = nil
+                
+                // Check if game should end
+                if gameManager.health <= 0 {
+                    resetGame(isGameOver: true)
+                    return
+                }
             }
             
-            currentTask = nil
-            trySpawnIfClear() // langsung spawn kata baru
+            // Only spawn new obstacles if game is still active
+            if !isResetting && gameManager.health > 0 {
+                run(SKAction.sequence([
+                    SKAction.wait(forDuration: 0.5),
+                    SKAction.run { [weak self] in
+                        self?.trySpawnIfClear()
+                    }
+                ]))
+            }
             return
         }
         
