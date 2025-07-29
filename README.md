@@ -72,3 +72,4 @@ Follow these steps to get Astro Flights up and running on your local machine usi
 ## 🤝 Contributor
   * 🧑‍💻 **Stefanus Reynaldo** : [@streynaldo](https://github.com/streynaldo)
   * 🧑‍💻 **Louis Fernando** : [@LouisFernando1204](https://github.com/LouisFernando1204)
+  * 🧑‍💻 **Christian Sinaga** : [@chrisndrews](https://github.com/chrisndrews)
