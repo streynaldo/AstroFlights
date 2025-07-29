@@ -33,12 +33,14 @@ Welcome to **Astro Flights**, a fast-paced, **hypercasual** retro arcade game fo
   * 햅 **Haptics**: Core Haptics
 
 ## 🌟 See Astro Flights in Action\! 📸
-<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-    <img src="https://drive.google.com/uc?id=------" alt="Screenshot 1" style="width: 70%;"/>
-    <img src="https://drive.google.com/uc?id=------" alt="Screenshot 2" style="width: 70%;"/>
-    <img src="https://drive.google.com/uc?id=------" alt="Screenshot 3" style="width: 70%;"/>
-    <img src="https://drive.google.com/uc?id=------" alt="Screenshot 4" style="width: 70%;"/>
-    <img src="https://drive.google.com/uc?id=------" alt="Screenshot 5" style="width: 70%;"/>
+<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">  
+    <img src="https://drive.google.com/uc?id=1H1jlUPdoZoDiRfdjJtN8VDFI2vLliwb0" alt="Screenshot 1" style="width: 30%;"/>
+    <img src="https://drive.google.com/uc?id=15tst8NzmzJ6VMkcSH9RuHKCz1mwjgZHi" alt="Screenshot 2" style="width: 30%;"/>
+    <img src="https://drive.google.com/uc?id=1XI13I78xvS9uOUDxZ0M0ruZ2YUQ-pKgj" alt="Screenshot 3" style="width: 30%;"/>
+    <img src="https://drive.google.com/uc?id=1v3_4oiC28v-_GHWCtcG8PIrnpFWKCEDD" alt="Screenshot 4" style="width: 30%;"/>
+    <img src="https://drive.google.com/uc?id=15VQ1HaEYrQ30HfNz9BvzAX9hcyfymXWj" alt="Screenshot 5" style="width: 30%;"/>
+    <img src="https://drive.google.com/uc?id=15G4A4HGxMGsmMhQj9uazWUwt_RkuD9c4" alt="Screenshot 5" style="width: 30%;"/>
+    <img src="https://drive.google.com/uc?id=1zKfB120Rjng8ik8V1OCe3K2HtmGVEckM" alt="Screenshot 5" style="width: 30%;"/>
 </div>
 
 ## 🚀 Getting Started
