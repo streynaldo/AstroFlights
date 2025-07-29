@@ -69,7 +69,7 @@ struct STLGameView: View {
                     Image("coin")
                         .resizable().frame(width: 24, height: 24)
                         .shadow(color: .black, radius: 1, x: 1, y: 1)
-                    Text("\(gameState.score)")
+                    Text(formatScore(gameState.score))
                         .font(.custom("VTF MisterPixel", size: 28))
                         .foregroundColor(.yellow)
                         .shadow(color: .black, radius: 2, x: 2, y: 2)
@@ -139,34 +139,38 @@ struct STLGameView: View {
                     Button(action: {
                         scene.resumeGame()
                     }) {
-                        Text("RESUME")
-                            .font(.custom("VTF MisterPixel", size: 24))
-                            .foregroundColor(.white)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: 220)
-                            .background(Color.green)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 0)
-                                    .stroke(Color.white, lineWidth: 2)
-                            )
-                            .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
+                        ZStack{
+                            Image("fitb_gamemode_button")
+                                .resizable()
+                                .scaledToFit()
+                                .opacity(0.75)
+                                .frame(width: .infinity, height: 80)
+                            Text("RESUME")
+                                .font(.custom("VTF MisterPixel", size: 20))
+                                .fontWeight(.black)
+                                .foregroundColor(.white)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: 220)
+                        }
                     }
                     
                     Button(action: {
                         gameState.submitFinalScoreToLeaderboard(for: gameKitManager)
                         dismiss()
                     }) {
-                        Text("MAIN MENU")
-                            .font(.custom("VTF MisterPixel", size: 24))
-                            .foregroundColor(.white)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: 220)
-                            .background(Color.red)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 0)
-                                    .stroke(Color.white, lineWidth: 2)
-                            )
-                            .overlay(Rectangle().stroke(Color.white, lineWidth: 2))
+                        ZStack{
+                            Image("main_menu_button")
+                                .resizable()
+                                .scaledToFit()
+                                .opacity(0.75)
+                                .frame(width: .infinity, height: 80)
+                            Text("MAIN MENU")
+                                .font(.custom("VTF MisterPixel", size: 20))
+                                .fontWeight(.black)
+                                .foregroundColor(.white)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: 220)
+                        }
                     }
                 }
             }
@@ -197,7 +201,7 @@ struct STLGameView: View {
                         .font(.custom("VTF MisterPixel", size: 24))
                         .foregroundColor(.green)
                     
-                    Text("\(gameState.score)")
+                    Text(formatScore(gameState.score))
                         .font(.custom("VTF MisterPixel", size: 64))
                         .foregroundColor(.yellow)
                         .shadow(color: .black, radius: 4, x: 2, y: 2)
@@ -219,41 +223,57 @@ struct STLGameView: View {
                     Button(action: {
                         gameState.resetGame()
                     }) {
-                        Text("PLAY AGAIN")
-                            .font(.custom("VTF MisterPixel", size: 20))
-                            .fontWeight(.black)
-                            .foregroundColor(.black)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: 220)
-                            .background(Color.green)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 0)
-                                    .stroke(Color.white, lineWidth: 2)
-                            )
-                            .shadow(color: .white, radius: 0, x: 3, y: 3)
+                        ZStack{
+                            Image("fitb_gamemode_button")
+                                .resizable()
+                                .scaledToFit()
+                                .opacity(0.75)
+                                .frame(width: .infinity, height: 80)
+                            Text("PLAY AGAIN")
+                                .font(.custom("VTF MisterPixel", size: 20))
+                                .fontWeight(.black)
+                                .foregroundColor(.white)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: 220)
+                        }
                     }
                     
                     Button(action: {
                         dismiss()
                     }) {
-                        Text("MAIN MENU")
-                            .font(.custom("VTF MisterPixel", size: 20))
-                            .fontWeight(.black)
-                            .foregroundColor(.black)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: 220)
-                            .background(Color.red)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 0)
-                                    .stroke(Color.white, lineWidth: 2)
-                            )
-                            .shadow(color: .white, radius: 0, x: 3, y: 3)
+                        ZStack{
+                            Image("main_menu_button")
+                                .resizable()
+                                .scaledToFit()
+                                .opacity(0.75)
+                                .frame(width: .infinity, height: 80)
+                            Text("MAIN MENU")
+                                .font(.custom("VTF MisterPixel", size: 20))
+                                .fontWeight(.black)
+                                .foregroundColor(.white)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: 220)
+                        }
                     }
                 }
             }
             .padding(40)
             .background(Color.black) // Latar belakang hitam pekat untuk box pop-up
             .overlay(Rectangle().stroke(Color.red.opacity(0.7), lineWidth: 2)) // Border untuk box
+        }
+    }
+    
+    // Helper function to format score with K notation
+    private func formatScore(_ score: Int) -> String {
+        if score >= 1000 {
+            let thousands = Double(score) / 1000.0
+            if thousands >= 10 {
+                return String(format: "%.0fK", thousands)
+            } else {
+                return String(format: "%.1fK", thousands)
+            }
+        } else {
+            return "\(score)"
         }
     }
 }
