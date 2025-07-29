@@ -31,23 +31,24 @@ struct MainMenuView: View {
                         scene.scaleMode = .aspectFill
                         return scene
                     }())
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(.all)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
                     // Menu Overlay
                     VStack(spacing: 40) {
                         Spacer()
                         
                         // GAME TITLE
-                        VStack(spacing: 10) {
-                            Text("WORD").font(.custom("VTF MisterPixel", size: 48)).foregroundColor(.cyan)
-                            Text("INVADERS").font(.custom("VTF MisterPixel", size: 48)).foregroundColor(.yellow)
-                        }.shadow(color: .black, radius: 2, x: 2, y: 2)
-                        
-                        Spacer()
-                        
+                        Image("game_logo")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: 300, maxHeight: 150)
+//                            .padding(.top, 20)
+//                            .padding(.bottom, 20)
+    
                         // GAME MODE SELECTION
                         VStack(spacing: 30) {
-                            Text("SELECT GAME MODE").font(.custom("VTF MisterPixel", size: 16)).foregroundColor(.white)
+                            Text("CHOOSE YOUR BATTLE MODE, CAPTAIN!").font(.custom("VTF MisterPixel", size: 16)).foregroundColor(.white)
                             
                             VStack(spacing: 20) {
                                 // FILL IN THE BLANKS BUTTON
@@ -55,38 +56,39 @@ struct MainMenuView: View {
                                     FITBGameState.shared.reset()
                                     showFITBGame = true
                                 }) {
-                                    MenuButtonContent(title: "FILL IN THE BLANKS", subtitle: "Complete missing letters", color: .green)
+                                    MenuButtonContent(title: "FILL IN THE BLANKS", subtitle: "Complete missing letters", bgname: "fitb_gamemode_button")
                                 }
                                 
                                 // SHOOT THE LETTERS BUTTON
                                 Button(action: startGameSTL) {
-                                    MenuButtonContent(title: "SHOOT THE LETTERS", subtitle: "Spell words by shooting", color: .yellow)
+                                    MenuButtonContent(title: "SHOOT THE LETTERS", subtitle: "Spell words by shooting", bgname: "stl_gamemode_button")
                                 }
                                 
                                 // LEADERBOARD & ACHIEVEMENTS... (tetap sama)
-                                NavigationLink(destination: LeaderboardView(gameKitManager: gameKitManager, stlLeaderboardID: "sort_the_letters_leaderboard", fitbLeaderboardID: "fill_in_the_blank_leaderboard")) {
-                                    MenuButtonContent(title: "LEADERBOARD", subtitle: nil, color: .blue)
+                                HStack{
+                                    NavigationLink(destination: LeaderboardView(gameKitManager: gameKitManager, stlLeaderboardID: "sort_the_letters_leaderboard", fitbLeaderboardID: "fill_in_the_blank_leaderboard")) {
+                                        Image("leaderboard_icon")
+                                            .resizable()
+                                            .frame(maxWidth: 140, maxHeight: 80)
+                                    }
+                                    NavigationLink(destination: AchievementsView(gameKitManager: gameKitManager, stlAchievementFilter: "sort_the_letters", fitbAchievementFilter: "fill_in_the_blank")) {
+                                        Image("achievement_button")
+                                            .resizable()
+                                            .frame(maxWidth: 140, maxHeight: 80)
+                                    }
                                 }
-                                NavigationLink(destination: AchievementsView(gameKitManager: gameKitManager, stlAchievementFilter: "sort_the_letters", fitbAchievementFilter: "fill_in_the_blank")) {
-                                    MenuButtonContent(title: "ACHIEVEMENTS", subtitle: nil, color: .purple)
-                                }
+                                .frame(maxWidth: .infinity)
                             }
                         }
-                        Spacer()
-                        
-                        // RETRO FOOTER TEXT
-                        Text("CHOOSE YOUR BATTLE MODE, CAPTAIN!")
-                            .font(.custom("VTF MisterPixel", size:12))
-                            .foregroundColor(.white)
-                            .shadow(color: .black, radius: 1, x: 1, y: 1)
-                        
                         Spacer()
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(40)
-                    .background(Color.black.opacity(0.7))
+                    .padding(.bottom, 60)
                 }
             }
+            .ignoresSafeArea(.all)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .fullScreenCover(isPresented: $showFITBGame) {
                 FITBGameView()
             }
@@ -133,26 +135,35 @@ struct MainMenuView: View {
 struct MenuButtonContent: View {
     let title: String
     let subtitle: String?
-    let color: Color
+    let bgname: String
     
     var body: some View {
-        VStack(spacing: subtitle == nil ? 0 : 8) {
-            Text(title)
-                .font(.custom("VTF MisterPixel", size: 18))
-                .foregroundColor(.black)
+        ZStack {
+            Image(bgname)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: 80)
             
-            if let subtitle = subtitle {
-                Text(subtitle)
-                    .font(.custom("VTF MisterPixel", size: 12))
-                    .foregroundColor(.black.opacity(0.8))
+            VStack(spacing: subtitle == nil ? 0 : 4) {
+                Text(title)
+                    .font(.custom("VTF MisterPixel", size: 18))
+                    .fontWeight(.black)
+                    .foregroundColor(.black)
+                    .shadow(color: .white, radius: 1, x: 1, y: 1)
+                    .multilineTextAlignment(.center)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.custom("VTF MisterPixel", size: 12))
+                        .fontWeight(.bold)
+                        .foregroundColor(.black.opacity(0.8))
+                        .shadow(color: .white, radius: 0.5, x: 0.5, y: 0.5)
+                        .multilineTextAlignment(.center)
+                }
             }
+            .padding(.horizontal, 20)
         }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 30)
-        .frame(maxWidth: 260)
-        .background(color)
-        .overlay(RoundedRectangle(cornerRadius: 0).stroke(Color.white, lineWidth: 2))
-        .shadow(color: .white, radius: 0, x: 3, y: 3)
+        .frame(maxWidth: .infinity, maxHeight: 80)
     }
 }
 

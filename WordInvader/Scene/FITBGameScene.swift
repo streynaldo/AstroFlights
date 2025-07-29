@@ -492,7 +492,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             
             // Show stats
             let stats = wordDataManager.getGameStats()
-            print("Game Stats - Total Games: \(stats.totalGames), Best Score: \(stats.bestScore), Average: \(stats.averageScore)")
+//            print("Game Stats - Total Games: \(stats.totalGames), Best Score: \(stats.bestScore), Average: \(stats.averageScore)")
         } else {
             gameManager.isGameOver = false
             gameManager.setCurrentTaskText("")
