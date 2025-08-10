@@ -58,7 +58,7 @@ class MainMenuScene: SKScene {
     }
     
     private func setupAudio() {
-        if let musicURL = Bundle.main.url(forResource: "bgm", withExtension: "mp3") {
+        if let musicURL = Bundle.main.url(forResource: "mainmenu", withExtension: "mp3") {
             backgroundMusic = SKAudioNode(url: musicURL)
             backgroundMusic?.autoplayLooped = true
             addChild(backgroundMusic!)

@@ -47,7 +47,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
         setupPlayer()
         setupFloor()
         
-        soundManager.playBGM(named: "bgm.mp3", on: self)
+        soundManager.playBGM(named: "stlbgm.mp3", on: self)
     }
     
     override func update(_ currentTime: TimeInterval) {
@@ -222,7 +222,7 @@ class STLGameScene: SKScene, SKPhysicsContactDelegate {
             }
         } else {
             gameState.incorrectLetterShot()
-            showBrokenHeartEffect(at: obstacle.position)
+//            showBrokenHeartEffect(at: obstacle.position)
             HapticsManager.shared.trigger(.error)
             
             let shake = SKAction.sequence([

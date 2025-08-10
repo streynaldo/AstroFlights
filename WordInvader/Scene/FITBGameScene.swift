@@ -44,7 +44,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
     
     override func didMove(to view: SKView) {
         // Inisialisasi BGM
-        soundManager.playBGM(named: "bgm.mp3", on: self)
+        soundManager.playBGM(named: "fitbbgm.mp3", on: self)
         currentGameSession = GameSession()
         
         // Initialize parallax manager and setup background
@@ -223,7 +223,7 @@ class FITBGameScene: SKScene, SKPhysicsContactDelegate {
             hit.run(shake)
             
             soundManager.playSoundEffect(named: "wrong.mp3", on: self)
-            showBrokenHeartEffect(at: hit.position)
+//            showBrokenHeartEffect(at: hit.position)
             HapticsManager.shared.trigger(.error)
             gameManager.updateScore(by: -10)
             gameManager.streak = 0
