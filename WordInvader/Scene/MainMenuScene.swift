@@ -31,7 +31,7 @@ class MainMenuScene: SKScene {
         parallaxManager?.setupParallaxBackground()
         parallaxManager?.setupFallingWindEffect()
         setupSpaceship()
-//        setupAudio()
+        setupAudio()
         startSpaceshipMovement()
         startRandomShooting()
     }
