@@ -75,3 +75,10 @@ Follow these steps to get Astro Flights up and running on your local machine usi
   * 🧑‍💻 **Stefanus Reynaldo** : [@streynaldo](https://github.com/streynaldo)
   * 🧑‍💻 **Louis Fernando** : [@LouisFernando1204](https://github.com/LouisFernando1204)
   * 🧑‍💻 **Christian Sinaga** : [@chrisndrews](https://github.com/chrisndrews)
+
+## Privacy and Policy
+
+AstroFlights does not collect, store, or share any personal data from users.
+Any information used is solely for gameplay functionality and is not linked to any individual.
+If you have questions about this Privacy Policy, please contact us at [email kamu].
+
